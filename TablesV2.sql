@@ -33,6 +33,31 @@ create table license (
     foreign key(pilot_id) references pilot(person_id) on delete cascade on update restrict
 );
 
+create table location (
+	loc_id varchar(255) primary key,
+    type varchar(5) not null, -- this will be for like 'port' or 'plane'
+    
+    -- these are for airplanes --> 'plane' type
+    seat_cap int, -- can be null since not required
+    speed int, -- can be null
+    owning_airline varchar(255),
+    filled varchar(1), -- will be calculated as 't' or 'f'
+    
+    -- these are for airports --> 'port' type
+    airport_id varchar(255),
+    airport_name varchar(255),
+    city varchar(255),
+    state varchar(255),
+    country varchar(255),
+
+	foreign key(owning_airline) references airline(airline_id) on delete cascade
+);
+
+create table airline (
+	airline_id varchar(255) primary key,
+    revenue double not null
+);
+
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- Drop all tables
