@@ -33,4 +33,14 @@ create table license (
     foreign key(pilot_id) references pilot(person_id) on delete cascade on update restrict
 );
 
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- Drop all tables
+DROP TABLE if exists passenger; -- we can check deletes with this
+
+-- Re-enable foreign key checks
+SET FOREIGN_KEY_CHECKS = 1;
+
+show tables;
+
 
