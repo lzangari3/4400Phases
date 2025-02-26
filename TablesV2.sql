@@ -6,7 +6,10 @@ create table passenger (
     fname varchar(255) not null,
     lname varchar(255),
     miles double,
-    funds double
+    funds double,
+    location_id varchar(255) not null, -- they must participate
+    foreign key(location_id) references location(loc_id) 
+		on delete cascade on update restrict
 );
 
 create table vacation (
@@ -23,7 +26,10 @@ create table pilot (
     tax_id int not null,
     fname varchar(255) not null,
     lname varchar(255) not null,
-    experience int not null
+    experience int not null,
+    location_id varchar(255) not null, -- they must participate
+    foreign key(location_id) references location(loc_id) 
+		on delete cascade on update restrict
 );
 
 create table license (
