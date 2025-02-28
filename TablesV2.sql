@@ -35,7 +35,7 @@ create table vacation (
 
 create table pilot (
 	personID varchar(50) not null primary key,
-    taxID varchar(50) not null,
+    taxID char(11) not null check (taxID REGEXP '^[0-9]{3}-[0-9]{2}-[0-9]{4}$'),
     fname varchar(100) not null,
     lname varchar(100) not null,
     experience int not null,
@@ -60,7 +60,7 @@ create table airplane (
     airlineID varchar(50) not null,
     speed int not null,
     seat_cap int not null,
-    filled bool not null,
+    filled boolean not null,
     locID varchar(50) not null,
     
     foreign key(airlineID) references airline(airlineID),
@@ -89,20 +89,20 @@ create table airbus (
 );
 
 create table supports (
-	progress varchar(50) not null,
-    flight_status varchar(50) not null,
+	progress int not null,
+    flight_status varchar(100) not null,
     next_time datetime not null,
     flightID varchar(50) not null primary key,
     tail_num varchar(50) not null,
     airlineID varchar(50) not null,
     
     foreign key(flightID) references flight(flightID),
-    foreign key(tail_num, airlineID) references airplane(airlineID, tail_num)
+    foreign key(tail_num, airlineID) references airplane(tail_num, airlineID)
 );
 
 create table flight (
 	flightID varchar(50) not null primary key,
-    cost double not null,
+    cost int not null,
     routeID varchar(50) not null,
     
     foreign key(routeID) references route(routeID)
@@ -110,7 +110,7 @@ create table flight (
 
 create table route_contains_legs (
 	routeID varchar(50) not null,
-    legID varchar(50) not null,
+    legID int not null,
     sequence varchar(100) not null,
     
     primary key(routeID, legID),
@@ -130,11 +130,11 @@ create table leg (
 );
 
 create table airport (
-	airportID varchar(50) not null primary key,
+	airportID char(3) not null primary key,
     name varchar(100) not null,
     city varchar(100) not null,
     state varchar(100) not null,
-    country varchar(100) not null,
+    country char(3) not null,
     travelers int not null,
     locID varchar(50) not null,
     
@@ -149,12 +149,28 @@ create table route (
 /*
 SET FOREIGN_KEY_CHECKS = 0;
 
--- Drop all tables
-DROP TABLE if exists passenger; -- we can check deletes with this
+DROP TABLE IF EXISTS 
+    airline,
+    location,
+    passenger,
+    vacation,
+    pilot,
+    license,
+    airplane,
+    boeing,
+    airbus,
+    supports,
+    flight,
+    route_contains_legs,
+    leg,
+    airport,
+    route;
 
 -- Re-enable foreign key checks
-SET FOREIGN_KEY_CHECKS = 1;
+SET FOREIGN_KEY_CHECKS = 1; 
 
-show tables;
+show tables; 
+
 */
+
 
