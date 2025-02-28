@@ -1,69 +1,152 @@
 create database sams2;
+use sams2;
 -- ASSUME TABLES NOT COMMITTED
 -- Data types need to be checked
-create table passenger (
-	person_id varchar(255) primary key,
-    fname varchar(255) not null,
-    lname varchar(255),
-    miles double,
-    funds double,
-    location_id varchar(255) not null, -- they must participate
-    foreign key(location_id) references location(loc_id) 
-		on delete cascade on update restrict
-);
-
-create table vacation (
-	sequence varchar(255) not null,
-    destination varchar(255) not null,
-    passenger_id varchar(255),
-    primary key(sequence, destination, passenger_id), -- pkey
-    foreign key(passenger_id) references passenger(person_id) 
-		on delete cascade on update restrict -- fkey
-);
-
-create table pilot (
-	person_id varchar(255) primary key,
-    tax_id int not null,
-    fname varchar(255) not null,
-    lname varchar(255) not null,
-    experience int not null,
-    location_id varchar(255) not null, -- they must participate
-    foreign key(location_id) references location(loc_id) 
-		on delete cascade on update restrict
-);
-
-create table license (
-	pilot_id varchar(255) not null,
-    license_id varchar(255) not null,
-    primary key(pilot_id, license_id),
-    foreign key(pilot_id) references pilot(person_id) on delete cascade on update restrict
-);
-
-create table location (
-	loc_id varchar(255) primary key,
-    type varchar(5) not null, -- this will be for like 'port' or 'plane'
-    
-    -- these are for airplanes --> 'plane' type
-    seat_cap int, -- can be null since not required
-    speed int, -- can be null
-    owning_airline varchar(255),
-    filled varchar(1), -- will be calculated as 't' or 'f'
-    
-    -- these are for airports --> 'port' type
-    airport_id varchar(255),
-    airport_name varchar(255),
-    city varchar(255),
-    state varchar(255),
-    country varchar(255),
-
-	foreign key(owning_airline) references airline(airline_id) on delete cascade
-);
 
 create table airline (
-	airline_id varchar(255) primary key,
+    airlineID varchar(50) primary key,
     revenue double not null
 );
 
+create table location (
+	locID varchar(50) primary key
+);
+
+create table passenger (
+	personID varchar(50) primary key,
+    fname varchar(100) not null,
+    lname varchar(100),
+    miles int not null,
+    funds double not null,
+    locID varchar(50) not null,
+    
+    foreign key(locID) references location(locID)
+);
+
+create table vacation (
+	sequence varchar(50) not null,
+    destination varchar(50) not null,
+    passengerID varchar(50) not null,
+    
+    primary key(sequence, destination, passengerID),
+    
+    foreign key(passengerID) references passenger(personID)
+);
+
+create table pilot (
+	personID varchar(50) not null primary key,
+    taxID varchar(50) not null,
+    fname varchar(100) not null,
+    lname varchar(100) not null,
+    experience int not null,
+    locID varchar(50) not null,
+    flightID varchar(50),
+    
+    foreign key(locID) references location(locID),
+    foreign key(flightID) references flight(flightID)
+);
+
+create table license (
+	aircraft_name varchar(50) not null,
+    pilotID varchar(50) not null,
+    
+    primary key(aircraft_name, pilotID),
+    
+    foreign key(pilotID) references pilot(personID)
+);
+
+create table airplane (
+	tail_num varchar(50) not null,
+    airlineID varchar(50) not null,
+    speed int not null,
+    seat_cap int not null,
+    filled bool not null,
+    locID varchar(50) not null,
+    
+    foreign key(airlineID) references airline(airlineID),
+    foreign key(locID) references location(locID),
+    primary key(tail_num, airlineID)
+);
+
+create table boeing (
+	tail_num varchar(50) not null,
+    airlineID varchar(50) not null,
+    model varchar(50) not null,
+    maintained bool not null,
+    
+    foreign key(tail_num, airlineID) references airplane(tail_num, airlineID),
+    primary key(tail_num, airlineID)
+);
+
+create table airbus (
+	tail_num varchar(50) not null,
+    airlineID varchar(50) not null,
+    variant varchar(50) not null,
+    
+    primary key(tail_num, airlineID),
+    
+    foreign key(tail_num, airlineID) references airplane(tail_num, airlineID)
+);
+
+create table supports (
+	progress varchar(50) not null,
+    flight_status varchar(50) not null,
+    next_time datetime not null,
+    flightID varchar(50) not null primary key,
+    tail_num varchar(50) not null,
+    airlineID varchar(50) not null,
+    
+    foreign key(flightID) references flight(flightID),
+    foreign key(tail_num, airlineID) references airplane(airlineID, tail_num)
+);
+
+create table flight (
+	flightID varchar(50) not null primary key,
+    cost double not null,
+    routeID varchar(50) not null,
+    
+    foreign key(routeID) references route(routeID)
+);
+
+create table route_contains_legs (
+	routeID varchar(50) not null,
+    legID varchar(50) not null,
+    sequence varchar(100) not null,
+    
+    primary key(routeID, legID),
+    
+    foreign key(routeID) references route(routeID),
+    foreign key(legID) references leg(legID)
+);
+
+create table leg (
+	legID varchar(50) not null primary key,
+    distance int not null,
+    departing_airportID varchar(50) not null,
+    arriving_airportID varchar(50) not null,
+    
+    foreign key(departing_airportID) references airport(airportID),
+    foreign key(arriving_airportID) references airport(airportID)
+);
+
+create table airport (
+	airportID varchar(50) not null primary key,
+    name varchar(100) not null,
+    city varchar(100) not null,
+    state varchar(100) not null,
+    country varchar(100) not null,
+    travelers int not null,
+    locID varchar(50) not null,
+    
+    foreign key(locID) references location(locID)
+);
+
+create table route (
+	routeID varchar(50) not null primary key,
+    total_distance varchar(100) not null
+);
+-- Remember to comment these out
+/*
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- Drop all tables
@@ -73,5 +156,5 @@ DROP TABLE if exists passenger; -- we can check deletes with this
 SET FOREIGN_KEY_CHECKS = 1;
 
 show tables;
-
+*/
 
