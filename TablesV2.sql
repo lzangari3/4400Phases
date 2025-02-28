@@ -110,7 +110,7 @@ create table flight (
 
 create table route_contains_legs (
 	routeID varchar(50) not null,
-    legID int not null,
+    legID varchar(50) not null,
     sequence varchar(100) not null,
     
     primary key(routeID, legID),
@@ -146,7 +146,7 @@ create table route (
     total_distance varchar(100) not null
 );
 -- Remember to comment these out
-/*
+
 SET FOREIGN_KEY_CHECKS = 0;
 
 DROP TABLE IF EXISTS 
@@ -171,6 +171,6 @@ SET FOREIGN_KEY_CHECKS = 1;
 
 show tables; 
 
-*/
+
 
 
