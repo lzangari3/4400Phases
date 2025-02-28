@@ -36,12 +36,12 @@ CREATE TABLE location (
 
 CREATE TABLE airline (
     airlineID VARCHAR(50) PRIMARY KEY,
-    revenue DOUBLE NOT NULL
+    revenue DOUBLE NOT NULL CHECK (revenue >= 0)
 );
 
 CREATE TABLE route (
     routeID VARCHAR(50) NOT NULL PRIMARY KEY,
-    total_distance int NOT NULL
+    total_distance INT NOT NULL CHECK (total_distance >= 0)
 );
 
 CREATE TABLE airport (
@@ -49,8 +49,8 @@ CREATE TABLE airport (
     name VARCHAR(100) NOT NULL,
     city VARCHAR(100) NOT NULL,
     state VARCHAR(100) NOT NULL,
-    country CHAR(3) NOT NULL,
-    travelers INT NOT NULL,
+    country CHAR(3) NOT NULL CHECK (LENGTH(country) = 3),
+    travelers INT NOT NULL CHECK (travelers >= 0),
     locID VARCHAR(50),
     
     FOREIGN KEY (locID) REFERENCES location(locID)
@@ -58,7 +58,7 @@ CREATE TABLE airport (
 
 CREATE TABLE flight (
     flightID VARCHAR(50) NOT NULL PRIMARY KEY,
-    cost INT NOT NULL,
+    cost INT NOT NULL CHECK (cost >= 0),
     routeID VARCHAR(50) NOT NULL,
     
     FOREIGN KEY (routeID) REFERENCES route(routeID)
@@ -68,8 +68,8 @@ CREATE TABLE passenger (
     personID VARCHAR(50) PRIMARY KEY,
     fname VARCHAR(100) NOT NULL,
     lname VARCHAR(100),
-    miles INT DEFAULT 0,
-    funds DOUBLE DEFAULT 0,
+    miles INT CHECK (miles >= 0) DEFAULT 0,
+    funds DOUBLE CHECK (funds >= 0) DEFAULT 0,
     locID VARCHAR(50) NOT NULL,
     
     FOREIGN KEY (locID) REFERENCES location(locID)
@@ -90,7 +90,7 @@ CREATE TABLE pilot (
     taxID CHAR(11) NOT NULL CHECK (taxID REGEXP '^[0-9]{3}-[0-9]{2}-[0-9]{4}$'),
     fname VARCHAR(100) NOT NULL,
     lname VARCHAR(100) NOT NULL,
-    experience INT NOT NULL,
+    experience INT NOT NULL CHECK (experience >= 0),
     locID VARCHAR(50) NOT NULL,
     flightID VARCHAR(50),
     
@@ -110,14 +110,17 @@ CREATE TABLE license (
 CREATE TABLE airplane (
     tail_num VARCHAR(50) NOT NULL,
     airlineID VARCHAR(50) NOT NULL,
-    speed INT NOT NULL,
-    seat_cap INT NOT NULL,
-    filled INT NOT NULL check (filled >= 0),
+    speed INT NOT NULL CHECK (speed > 0),
+    seat_cap INT NOT NULL CHECK (seat_cap > 0),
+    filled INT NOT NULL CHECK (filled >= 0),
     locID VARCHAR(50) NOT NULL,
     
     FOREIGN KEY (airlineID) REFERENCES airline(airlineID),
     FOREIGN KEY (locID) REFERENCES location(locID),
-    PRIMARY KEY (tail_num, airlineID)
+    PRIMARY KEY (tail_num, airlineID),
+    
+    -- Do this to avoid checking two diff columns error
+    CONSTRAINT chk_filled_seat_cap CHECK (filled <= seat_cap)
 );
 
 CREATE TABLE boeing (
