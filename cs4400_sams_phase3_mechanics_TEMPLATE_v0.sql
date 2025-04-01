@@ -216,23 +216,52 @@ create procedure offer_flight (
     in ip_progress integer, in ip_next_time time, in ip_cost integer
 )
 sp_main: begin
+	declare plane_speed int;   
+    declare total_leg_distance int;
+    
     if ip_flightID is null or ip_routeID is null or ip_next_time is null or ip_cost is null then
         leave sp_main;
     end if;
     if not exists (select 1 from route where routeID = ip_routeID) then -- leave if our route isn't valid
         leave sp_main;
     end if;
-    if ip_support_airline is not null and ip_support_tail is not null then
+    
+    if ip_support_airline is not null and ip_support_tail is not null then -- we have a plane to assign
         if exists (select 1 from flight where support_airline = ip_support_airline 
-			and support_tail = ip_support_tail and status != 'ended') then
-            leave sp_main;
+			and support_tail = ip_support_tail and status != 'on_ground') then
+            leave sp_main; -- leave if associated plane is still active
         end if;
-    end if;
-    if ip_progress = (select max(sequence) from leg where routeID = ip_routeID) then
-        leave sp_main;
-    end if;
+        if not exists (select 1 from airplane where airlineID = ip_support_airline and 
+			tail_num = ip_support_tail) then
+				leave sp_main; -- leave if plane parameters are not valid plane.
+		end if;
+        
+        -- still assuming that we're given a valid plane
+        -- Goal: Our next time must be < routeID's final stop time
+        -- we also have our planes speed time
+        select speed into plane_speed from airplane -- save plane speed
+			where concat(airlineID, tail_num) = concat(ip_airlineID, ip_tail_num);
+            
+		SELECT SUM(distance) * 3600 / plane_speed into total_leg_distance
+		FROM 
+			route r JOIN route_path rp ON r.routeID = rp.routeID
+			JOIN leg l ON l.legID = rp.legID
+		WHERE 
+			rp.routeID = ip_routeID and ip_progress < rp.sequence;
+            
+		-- SELECT ADDTIME('2025-03-31 10:00:00', '02:15:00') AS new_time;
+		if ip_next_time > (select leg_time(total_leg_distance, plane_speed)) then
+            leave sp_main; -- leave if our next time is after the stop time
+		end if;
+            
+            
+    end if; -- end of nester
+    
+
+    -- everything has checked out fine, so we do our insertions
     insert into flight(flightID, routeID, support_airline, support_tail, progress, next_time, cost, status)
-    values (ip_flightID, ip_routeID, ip_support_airline, ip_support_tail, ip_progress, ip_next_time, ip_cost, 'ground');
+    values (ip_flightID, ip_routeID, ip_support_airline, ip_support_tail,
+		ip_progress, ip_next_time, ip_cost, 'on_ground');
 end //
 delimiter ;
 
@@ -244,15 +273,28 @@ drop procedure if exists flight_landing;
 delimiter //
 create procedure flight_landing (in ip_flightID varchar(50))
 sp_main: begin
+	declare curr_progress int;
+    declare curr_routeID varchar(50);
+    
     if ip_flightID is null then leave sp_main; end if;
     if not exists (select 1 from flight where flightID = ip_flightID and status = 'air') then
-        leave sp_main;
+        leave sp_main; -- leave if flightID isn't valid
     end if;
-    update flight set status = 'ground', next_time = addtime(next_time, '01:00:00'), progress = progress + 1
+    
+    update flight set status = 'on_ground', next_time = addtime(next_time, '01:00:00'),
+		progress = progress + 1
     where flightID = ip_flightID;
-    update person set experience = experience + 1 where personID in (select personID from crew where flightID = ip_flightID);
-    update person set miles = miles + (select distance from leg where routeID = (select routeID from flight where flightID = ip_flightID) and sequence = (select progress from flight where flightID = ip_flightID))
-    where personID in (select personID from passenger where flightID = ip_flightID);
+    
+    select progress into curr_progress from flight where flightID = ip_flightID;
+    select routeID into curr_routeID from flight where flightID = ip_flightID;
+    
+    update pilot set experience = experience + 1 where personID
+		in (select personID from pilot where commanding_flight = ip_flightID);
+        
+    update passenger set miles = miles + (select distance from route_path rp
+		join leg l on rp.legID = l.legID where rp.routeID = curr_routeID
+			and rp.sequence = curr_progress limit 1);
+            
 end //
 delimiter ;
 
@@ -267,16 +309,52 @@ sp_main: begin
     declare v_speed int;
     declare v_distance int;
     declare v_duration time;
+    declare plane_type varchar(50);
+    
     if ip_flightID is null then leave sp_main; end if;
-    if not exists (select 1 from flight where flightID = ip_flightID and status = 'ground') then leave sp_main; end if;
-    if (select count(*) from crew where flightID = ip_flightID) < 1 then
+    if not exists (select 1 from flight where flightID = ip_flightID and status = 'on_ground') then
+		leave sp_main; end if; -- leave if invalid flightID or if we're on the ground
+        
+	-- at this point, ip_flightID is valid
+    -- airbus at least one pilot --> has neo variant
+    -- boeing at least 2 pilots --> has null neo variant
+    
+    -- Goal: establish plane type first
+    if (select isnull(neo) from flight f join airplane a
+		on f.supporting_airline = a.airlineID and f.supporting_tail = a.tail_num) = 1
+        then -- plane is boeing
+        set plane_type = 'boeing';
+        
+	else
+			set plane_type = 'airbus';
+	end if;
+			
+        
+    if (select count(*) from pilot where commanding_flight = ip_flightID) < 1 then
         update flight set next_time = addtime(next_time, '00:30:00') where flightID = ip_flightID;
         leave sp_main;
-    end if;
-    select speed into v_speed from airplane where airlineID = (select support_airline from flight where flightID = ip_flightID) and tail_num = (select support_tail from flight where flightID = ip_flightID);
-    select distance into v_distance from leg where routeID = (select routeID from flight where flightID = ip_flightID) and sequence = (select progress from flight where flightID = ip_flightID) + 1;
+    end if; -- we do this no matter what plane
+    
+    if (select count(*) from pilot where commanding_flight = ip_flightID) = 1 and plane_type = 'boeing'
+		then
+		update flight set next_time = addtime(next_time, '00:30:00') where flightID = ip_flightID;
+        leave sp_main;
+	end if; -- if boeing wants to take off with 1 < 2 pilots
+    
+    -- otherwise, we are wanting to take off with 1 or more pilots with boeing being safe.
+    -- TODO continue looking here for a correct speed look up. 
+    select speed into v_speed from airplane where airlineID = (select support_airline
+		from flight where flightID = ip_flightID)
+			and tail_num = (select support_tail from flight
+			where flightID = ip_flightID);
+            
+    select distance into v_distance from leg where routeID
+		= (select routeID from flight where flightID = ip_flightID)
+		and sequence = (select progress from flight where flightID = ip_flightID) + 1;
+        
     set v_duration = leg_time(v_distance, v_speed);
-    update flight set status = 'air', next_time = addtime(next_time, v_duration) where flightID = ip_flightID;
+    update flight set status = 'air', next_time = addtime(next_time, v_duration)
+		where flightID = ip_flightID;
 end //
 delimiter ;
 -- [8] passengers_board()
