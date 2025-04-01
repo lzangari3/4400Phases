@@ -60,14 +60,31 @@ sp_main: begin
     if ip_seat_capacity <= 0 or ip_speed <= 0 then
         leave sp_main;
     end if;
-    if not exists (select 1 from airline where airlineID = ip_airlineID) then
+    if not exists (select 1 from airline where airlineID = ip_airlineID) then -- if airline doesn't exist
         leave sp_main;
     end if;
-    if exists (select 1 from airplane where airlineID = ip_airlineID and tail_num = ip_tail_num) then
+    if exists (select 1 from airplane where airlineID = ip_airlineID and tail_num = ip_tail_num) then -- does airplane exist
         leave sp_main;
     end if;
-    insert into location(locID, city, state, country) values (ip_locationID, null, null, null);
-    insert into airplane(airlineID, tail_num, seat_cap, speed, locID, maintained, model, neo)
+    if exists (select 1 from location where locationID = ip_locationID) then -- leave if location alr exists
+		leave sp_main;
+	end if;
+    
+    -- insert into location(locationID, city, state, country) values (ip_locationID, null, null, null); -- Check location table
+    insert into location(locationID) values (ip_locationID);
+    /*
+    "airlineID" varchar(50) NOT NULL,
+	"tail_num" varchar(50) NOT NULL,
+  "seat_capacity" int NOT NULL,
+  "speed" int NOT NULL,
+  "locationID" varchar(50) DEFAULT NULL,
+  "plane_type" varchar(100) DEFAULT NULL,
+  "maintenanced" tinyint(1) DEFAULT NULL,
+  "model" varchar(50) DEFAULT NULL,
+  "neo" tinyint(1) DEFAULT NULL,
+    
+    */
+    insert into airplane(airlineID, tail_num, seat_capacity, speed, locationID, maintenanced, model, neo)
     values (ip_airlineID, ip_tail_num, ip_seat_capacity, ip_speed, ip_locationID, ip_maintenanced, ip_model, ip_neo);
 end //
 delimiter ;
@@ -83,19 +100,32 @@ create procedure add_airport (
     in ip_city varchar(100), in ip_state varchar(100), in ip_country char(3), in ip_locationID varchar(50)
 )
 sp_main: begin
-    if ip_airportID is null or ip_locationID is null or ip_airport_name is null or ip_city is null or ip_state is null or ip_country is null then
+    if ip_airportID is null or ip_locationID is null or ip_airport_name is null
+		or ip_city is null or ip_state is null or ip_country is null then
         leave sp_main;
     end if;
-    if exists (select 1 from airport where airportID = ip_airportID) then
+    if exists (select 1 from airport where airportID = ip_airportID) then -- leave if airportID in use
         leave sp_main;
     end if;
-    if exists (select 1 from location where locID = ip_locationID) then
+    if exists (select 1 from location where locationID = ip_locationID) then -- leave if locationID in use
         leave sp_main;
     end if;
-    insert into location(locID, city, state, country)
-    values (ip_locationID, ip_city, ip_state, ip_country);
-    insert into airport(airportID, name, locID)
-    values (ip_airportID, ip_airport_name, ip_locationID);
+    insert into location(locationID) values (ip_locationID); -- check location table. 
+		/*
+		CREATE TABLE "airport" (
+	  "airportID" char(3) NOT NULL,
+	  "airport_name" varchar(200) DEFAULT NULL,
+	  "city" varchar(100) NOT NULL,
+	  "state" varchar(100) NOT NULL,
+	  "country" char(3) NOT NULL,
+	  "locationID" varchar(50) DEFAULT NULL,
+	  PRIMARY KEY ("airportID"),
+	  KEY "fk2" ("locationID"),
+	  CONSTRAINT "fk2" FOREIGN KEY ("locationID") REFERENCES "location" ("locationID")
+	)
+		*/
+    insert into airport(airportID, airport_name, city, state, country, locationID)
+    values (ip_airportID, ip_airport_name, ip_city, ip_state, ip_country, ip_locationID);
 end //
 delimiter ;
 
@@ -113,14 +143,41 @@ sp_main: begin
     if ip_personID is null or ip_first_name is null or ip_locationID is null then
         leave sp_main;
     end if;
-    if not exists (select 1 from location where locID = ip_locationID) then
+    if not exists (select 1 from location where locationID = ip_locationID) then -- leave if location not valid
         leave sp_main;
     end if;
-    if exists (select 1 from person where personID = ip_personID) then
+    if exists (select 1 from person where personID = ip_personID) then -- leave if personID in use
         leave sp_main;
     end if;
-    insert into person(personID, first, last, locID, taxID, experience, miles, funds)
-    values (ip_personID, ip_first_name, ip_last_name, ip_locationID, ip_taxID, ip_experience, ip_miles, ip_funds);
+    if ip_taxID is not null then
+		if exists (select 1 from pilot where taxID = ip_taxID) then -- leave if pilot taxID in use.
+			leave sp_main;
+		end if;
+	end if;
+    -- by the time we arrive here, we're ready to make EITHER a pilot or a passenger
+    
+		/*
+		CREATE TABLE "person" (
+	  "personID" varchar(50) NOT NULL,
+	  "first_name" varchar(100) NOT NULL,
+	  "last_name" varchar(100) DEFAULT NULL,
+	  "locationID" varchar(50) NOT NULL,
+	  PRIMARY KEY ("personID"),
+	  KEY "fk8" ("locationID"),
+	  CONSTRAINT "fk8" FOREIGN KEY ("locationID") REFERENCES "location" ("locationID")
+	)
+		*/
+    -- we make a person that gets assigned in the next step
+    insert into person values (ip_personID, ip_first_name, ip_last_name, ip_locationID);
+    
+    -- we check for either a pilot or passenger type and assign the above person as their fk --> person
+    if ip_taxID is not null then
+		insert into pilot values (ip_personID, ip_taxID, ip_experience, null);
+    else
+		insert into passenger values (ip_personID, ip_miles, ip_funds);
+    end if;
+    
+    
 end //
 delimiter ;
 
@@ -136,10 +193,13 @@ sp_main: begin
     if ip_personID is null or ip_license is null then
         leave sp_main;
     end if;
+    if not exists (select 1 from pilot where personID = ip_personID) then -- we check if this personID relates to a pilot
+		leave sp_main;
+	end if;
     if exists (select 1 from pilot where personID = ip_personID and license = ip_license) then
-        delete from pilot where personID = ip_personID and license = ip_license;
+        delete from pilot where personID = ip_personID and license = ip_license; -- remove license if exists
     else
-        insert into pilot(personID, license) values (ip_personID, ip_license);
+        insert into pilot_license(personID, license) values (ip_personID, ip_license);
     end if;
 end //
 delimiter ;
@@ -159,11 +219,12 @@ sp_main: begin
     if ip_flightID is null or ip_routeID is null or ip_next_time is null or ip_cost is null then
         leave sp_main;
     end if;
-    if not exists (select 1 from route where routeID = ip_routeID) then
+    if not exists (select 1 from route where routeID = ip_routeID) then -- leave if our route isn't valid
         leave sp_main;
     end if;
     if ip_support_airline is not null and ip_support_tail is not null then
-        if exists (select 1 from flight where support_airline = ip_support_airline and support_tail = ip_support_tail and status != 'ended') then
+        if exists (select 1 from flight where support_airline = ip_support_airline 
+			and support_tail = ip_support_tail and status != 'ended') then
             leave sp_main;
         end if;
     end if;
@@ -236,10 +297,10 @@ sp_main: begin
     declare v_cost int;
     declare v_cap int;
     select support_tail, support_airline, cost into v_tail, v_airline, v_cost from flight where flightID = ip_flightID;
-    select locID, seat_cap into v_loc, v_cap from airplane where airlineID = v_airline and tail_num = v_tail;
+    select locationID, seat_cap into v_loc, v_cap from airplane where airlineID = v_airline and tail_num = v_tail;
     insert into passenger(flightID, personID)
     select ip_flightID, personID from person
-    where locID = v_loc and funds >= v_cost
+    where locationID = v_loc and funds >= v_cost
     and personID not in (select personID from passenger)
     limit v_cap;
     update person set funds = funds - v_cost
@@ -261,8 +322,8 @@ sp_main: begin
     declare v_loc varchar(50);
     select routeID, progress into v_rid, v_prog from flight where flightID = ip_flightID;
     select arrives into v_dest from leg where routeID = v_rid and sequence = v_prog;
-    select locID into v_loc from airport where airportID = v_dest;
-    update person set locID = v_loc where personID in (select personID from passenger where flightID = ip_flightID);
+    select locationID into v_loc from airport where airportID = v_dest;
+    update person set locationID = v_loc where personID in (select personID from passenger where flightID = ip_flightID);
     delete from passenger where flightID = ip_flightID;
 end //
 delimiter ;
@@ -281,12 +342,12 @@ sp_main: begin
     declare v_tail varchar(50);
     declare v_airline varchar(50);
     select support_airline, support_tail into v_airline, v_tail from flight where flightID = ip_flightID;
-    select model, locID into v_model, v_loc from airplane where airlineID = v_airline and tail_num = v_tail;
+    select model, locationID into v_model, v_loc from airplane where airlineID = v_airline and tail_num = v_tail;
     if not exists (select 1 from pilot where personID = ip_personID and license = v_model) then leave sp_main; end if;
-    if (select locID from person where personID = ip_personID) != v_loc then leave sp_main; end if;
+    if (select locationID from person where personID = ip_personID) != v_loc then leave sp_main; end if;
     if exists (select 1 from crew where personID = ip_personID) then leave sp_main; end if;
     insert into crew(flightID, personID) values (ip_flightID, ip_personID);
-    update person set locID = v_loc where personID = ip_personID;
+    update person set locationID = v_loc where personID = ip_personID;
 end //
 delimiter ;
 
@@ -400,8 +461,8 @@ group by l.depart;
 create or replace view people_in_the_air as
 select l.depart as departing_from,
        l.arrives as arriving_at,
-       count(distinct a.locID) as num_airplanes,
-       group_concat(distinct a.locID order by a.locID) as airplane_list,
+       count(distinct a.locationID) as num_airplanes,
+       group_concat(distinct a.locationID order by a.locationID) as airplane_list,
        group_concat(distinct f.flightID order by f.flightID) as flight_list,
        min(f.next_time) as earliest_arrival,
        max(f.next_time) as latest_arrival,
@@ -425,7 +486,7 @@ group by l.depart, l.arrives;
 -- and the full list of people by ID.
 create or replace view people_on_the_ground as
 select ap.airportID as departing_from,
-       ap.locID as airport,
+       ap.locationID as airport,
        ap.name as airport_name,
        l.city,
        l.state,
@@ -435,9 +496,9 @@ select ap.airportID as departing_from,
        count(p.personID) as joint_pilots_passengers,
        group_concat(distinct p.personID order by p.personID) as person_list
 from person p
-join location l on p.locID = l.locID
-join airport ap on ap.locID = l.locID
-group by ap.airportID, ap.locID, ap.name, l.city, l.state, l.country;
+join location l on p.locationID = l.locationID
+join airport ap on ap.locationID = l.locationID
+group by ap.airportID, ap.locationID, ap.name, l.city, l.state, l.country;
 
 -- [18] route_summary()
 -- Summarizes every route by showing number of legs, total distance,
@@ -464,6 +525,6 @@ select l.city, l.state, l.country,
        group_concat(distinct a.airportID order by a.airportID) as airport_code_list,
        group_concat(distinct a.name order by a.name) as airport_name_list
 from airport a
-join location l on a.locID = l.locID
+join location l on a.locationID = l.locationID
 group by l.city, l.state, l.country
 having count(distinct a.airportID) > 1;
