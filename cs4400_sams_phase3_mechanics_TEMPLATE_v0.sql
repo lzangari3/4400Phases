@@ -436,9 +436,39 @@ drop procedure if exists recycle_crew;
 delimiter //
 create procedure recycle_crew (in ip_flightID varchar(50))
 sp_main: begin
-    if ip_flightID is null then leave sp_main; end if;
-    if exists (select 1 from passenger where flightID = ip_flightID) then leave sp_main; end if;
-    delete from crew where flightID = ip_flightID;
+	declare flight_location varchar(50);
+    declare airport_location varchar(50);
+    
+    if ip_flightID is null then leave sp_main; end if; -- leave if id null
+    
+    -- if exists (select 1 from passenger where flightID = ip_flightID)
+		-- then leave sp_main; end if;
+        
+	if not exists (select 1 from flight where flightID = ip_flightID) then
+		leave sp_main; -- leave if the id is not valid
+	end if;
+	
+    if (select airplane_status from flight where flightID = ip_flightID) != 'on_ground' then
+		leave sp_main; -- we leave if flight is not on ground
+	end if;
+    
+    -- we now store the location of the airplane
+    select locationID into flight_location from flight f join airplane a on
+		f.support_airline = a.airlineID and f.support_tail = a.tail_num join location l on 
+        a.locationID = l.locationID where f.flightID = ip_flightID;
+        
+	-- now we go through the pilot table and free pilots from this flight. 
+    update pilot set commanding_flight = null where personID in 
+		(select personID from pilot where commanding_flight = ip_flightID);
+        
+	-- we need to store the location of the airport the plane just got to
+    select arrival into airport_location from flight f join route_path rp on
+		f.routeID = rp.routeID join leg le on le.legID = rp.legID where
+		rp.sequence = (select progress from flight where flightID = ip_flightID);
+    -- we also need to update the location values for recycled crew
+    update person set locationID = airport_location where personID in 
+		(select personID from pilot where commanding_flight = ip_flightID);
+    
 end //
 delimiter ;
 
@@ -455,7 +485,7 @@ sp_main: begin
     if ip_flightID is null then leave sp_main; end if;
     select status, progress into v_status, v_prog from flight where flightID = ip_flightID;
     select max(sequence) into v_max from leg where routeID = (select routeID from flight where flightID = ip_flightID);
-    if v_status != 'ground' then leave sp_main; end if;
+    if v_status != 'on_ground' then leave sp_main; end if;
     if v_prog != 0 and v_prog != v_max then leave sp_main; end if;
     if exists (select 1 from passenger where flightID = ip_flightID) then leave sp_main; end if;
     if exists (select 1 from crew where flightID = ip_flightID) then leave sp_main; end if;
