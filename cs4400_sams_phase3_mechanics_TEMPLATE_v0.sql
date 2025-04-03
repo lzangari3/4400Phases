@@ -328,7 +328,7 @@ sp_main: begin
 	else
 			set plane_type = 'airbus';
 	end if;
-			
+		-- There may be planes that are neither airbus or boeing 
         
     if (select count(*) from pilot where commanding_flight = ip_flightID) < 1 then
         update flight set next_time = addtime(next_time, '00:30:00') where flightID = ip_flightID;
@@ -365,17 +365,36 @@ drop procedure if exists passengers_board;
 delimiter //
 create procedure passengers_board (in ip_flightID varchar(50))
 sp_main: begin
-    if ip_flightID is null then leave sp_main; end if;
-    if not exists (select 1 from flight where flightID = ip_flightID and status = 'ground') then
-        leave sp_main;
+
+    if ip_flightID is null then 
+		leave sp_main; 
     end if;
+    
+    if not exists (select 1 from flight where flightID = ip_flightID and status = 'on_ground') then
+        leave sp_main;
+    end if; -- Check if there is a grounded flight with the inputted flightID
+    
+    -- Need to check if the passangers are at the same airport as the departing airport 
+    -- Basically, find all of the people who are passangers (join the passanger and person table), and then find their location
+    -- After that, get the current leg of the flight and then compare the departing airport to the passengers location 
+    -- Then check that the 
+
+    
     declare v_tail varchar(50);
     declare v_airline varchar(50);
     declare v_loc varchar(50);
     declare v_cost int;
     declare v_cap int;
+    
+    
+    select * from (person join passenger on person.personID = passenger.personID) join passenger_vacations on person.personID = passenger_vacations.personID;
+    -- check the locationID and funds for every passenger. Also joins the passenger intentions 
+	--  
+
+    
     select support_tail, support_airline, cost into v_tail, v_airline, v_cost from flight where flightID = ip_flightID;
     select locationID, seat_cap into v_loc, v_cap from airplane where airlineID = v_airline and tail_num = v_tail;
+    
     insert into passenger(flightID, personID)
     select ip_flightID, personID from person
     where locationID = v_loc and funds >= v_cost
