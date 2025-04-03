@@ -365,15 +365,15 @@ drop procedure if exists passengers_board;
 delimiter //
 create procedure passengers_board (in ip_flightID varchar(50))
 sp_main: begin
-    if ip_flightID is null then leave sp_main; end if;
-    if not exists (select 1 from flight where flightID = ip_flightID and status = 'ground') then
-        leave sp_main;
-    end if;
-    declare v_tail varchar(50);
+	declare v_tail varchar(50);
     declare v_airline varchar(50);
     declare v_loc varchar(50);
     declare v_cost int;
     declare v_cap int;
+    if ip_flightID is null then leave sp_main; end if;
+    if not exists (select 1 from flight where flightID = ip_flightID and status = 'ground') then
+        leave sp_main;
+    end if;
     select support_tail, support_airline, cost into v_tail, v_airline, v_cost from flight where flightID = ip_flightID;
     select locationID, seat_cap into v_loc, v_cap from airplane where airlineID = v_airline and tail_num = v_tail;
     insert into passenger(flightID, personID)
@@ -393,11 +393,11 @@ drop procedure if exists passengers_disembark;
 delimiter //
 create procedure passengers_disembark (in ip_flightID varchar(50))
 sp_main: begin
-    if ip_flightID is null then leave sp_main; end if;
-    declare v_rid varchar(50);
+	declare v_rid varchar(50);
     declare v_prog int;
     declare v_dest varchar(3);
     declare v_loc varchar(50);
+    if ip_flightID is null then leave sp_main; end if;
     select routeID, progress into v_rid, v_prog from flight where flightID = ip_flightID;
     select arrives into v_dest from leg where routeID = v_rid and sequence = v_prog;
     select locationID into v_loc from airport where airportID = v_dest;
@@ -414,11 +414,11 @@ drop procedure if exists assign_pilot;
 delimiter //
 create procedure assign_pilot (in ip_flightID varchar(50), in ip_personID varchar(50))
 sp_main: begin
-    if ip_flightID is null or ip_personID is null then leave sp_main; end if;
-    declare v_model varchar(50);
+	declare v_model varchar(50);
     declare v_loc varchar(50);
     declare v_tail varchar(50);
     declare v_airline varchar(50);
+    if ip_flightID is null or ip_personID is null then leave sp_main; end if;
     select support_airline, support_tail into v_airline, v_tail from flight where flightID = ip_flightID;
     select model, locationID into v_model, v_loc from airplane where airlineID = v_airline and tail_num = v_tail;
     if not exists (select 1 from pilot where personID = ip_personID and license = v_model) then leave sp_main; end if;
@@ -449,10 +449,10 @@ drop procedure if exists retire_flight;
 delimiter //
 create procedure retire_flight (in ip_flightID varchar(50))
 sp_main: begin
-    if ip_flightID is null then leave sp_main; end if;
-    declare v_status varchar(10);
+	declare v_status varchar(10);
     declare v_prog int;
     declare v_max int;
+    if ip_flightID is null then leave sp_main; end if;
     select status, progress into v_status, v_prog from flight where flightID = ip_flightID;
     select max(sequence) into v_max from leg where routeID = (select routeID from flight where flightID = ip_flightID);
     if v_status != 'ground' then leave sp_main; end if;
