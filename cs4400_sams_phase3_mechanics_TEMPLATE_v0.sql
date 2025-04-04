@@ -366,30 +366,53 @@ delimiter //
 create procedure passengers_board (in ip_flightID varchar(50))
 sp_main: begin
 
+	declare curr_seq int; 			-- This is the current progress this flight is at
+    declare max_leg int;  			-- This is the number of legs that the flight route has 
+    declare dep_airport varchar(3); -- Current departing airport
+    declare arr_airport varchar(3); -- Current arriving airport
+    declare ticket_cost int;		-- The price of a ticket
+
     if ip_flightID is null then 
 		leave sp_main; 
     end if;
     
+    -- Check if there is a grounded flight with the inputted flightID
     if not exists (select 1 from flight where flightID = ip_flightID and status = 'on_ground') then
         leave sp_main;
-    end if; -- Check if there is a grounded flight with the inputted flightID
-    
-    -- Need to check if the passangers are at the same airport as the departing airport 
-    -- Basically, find all of the people who are passangers (join the passanger and person table), and then find their location
-    -- After that, get the current leg of the flight and then compare the departing airport to the passengers location 
-    -- Then check that the 
+    end if;
 
+	-- Setting curr_seq and max_leg 
+    select progress + 1 into curr_seq from flight where flight.flightID = ip_flightID; -- Increment by 1 to match the correct sequence
+    select count(sequence) into max_leg from route_path join flight on route_path.routeID = flight.routeID
+	where flight.flightID = ip_flightID;
+
+	-- If a flight is on its last leg, you might not be able to board it (Not sure if this is correct)
+	if curr_seq > max_leg then
+		leave sp_main;
+	end if;
+
+	-- Setting dep_airport, arr_airport, and ticket_cost
+    select departure, arrival, cost into dep_airport, arr_airport, ticket_cost from (flight join route_path on flight.routeID = route_path.routeID) join leg on route_path.legID = leg.legID 
+	where route_path.sequence = curr_seq and flight.flightID = ip_flightID;
     
-    declare v_tail varchar(50);
-    declare v_airline varchar(50);
-    declare v_loc varchar(50);
-    declare v_cost int;
-    declare v_cap int;
+    -- Select all of the passengers who are at the departing airport and check these conditions:
+		-- find all of the people who are passangers (join the passanger and person table), and then find their location
+		-- After that, get the current leg of the flight and then compare the departing airport to the passengers location (must be the same)
+        
+        -- This query finds all of the passengers who are at the departing airport and their vacation intentions. 
+        select * from (passenger left join person on passenger.personID = person.personID join passenger_vacations on passenger.personID = passenger_vacations.personID)
+			join airport on airport.locationID = person.locationID
+			where airport.airportID = dep_airport;
+        
+		-- Then check that the passengers vacation intentions match one of the airports in the flights route path
+			-- Also, remember that you need to check the remaining airports
+            
+		-- This is kinda tricky since you need to know all of the remaining destinations on the flight and also account 
+        -- for any sequence vacation intentions. 
+
+		-- Lastly, you need to take the flight capacity into account as well
     
-    
-    select * from (person join passenger on person.personID = passenger.personID) join passenger_vacations on person.personID = passenger_vacations.personID;
-    -- check the locationID and funds for every passenger. Also joins the passenger intentions 
-	--  
+
 
     
     select support_tail, support_airline, cost into v_tail, v_airline, v_cost from flight where flightID = ip_flightID;
@@ -400,6 +423,7 @@ sp_main: begin
     where locationID = v_loc and funds >= v_cost
     and personID not in (select personID from passenger)
     limit v_cap;
+    
     update person set funds = funds - v_cost
     where personID in (select personID from passenger where flightID = ip_flightID);
 end //
@@ -412,16 +436,32 @@ drop procedure if exists passengers_disembark;
 delimiter //
 create procedure passengers_disembark (in ip_flightID varchar(50))
 sp_main: begin
-    if ip_flightID is null then leave sp_main; end if;
-    declare v_rid varchar(50);
-    declare v_prog int;
-    declare v_dest varchar(3);
-    declare v_loc varchar(50);
-    select routeID, progress into v_rid, v_prog from flight where flightID = ip_flightID;
-    select arrives into v_dest from leg where routeID = v_rid and sequence = v_prog;
-    select locationID into v_loc from airport where airportID = v_dest;
-    update person set locationID = v_loc where personID in (select personID from passenger where flightID = ip_flightID);
-    delete from passenger where flightID = ip_flightID;
+
+    declare arr_loc varchar(50);	-- The location ID of the arrival airport
+    declare arr_airport varchar(3); -- Current arriving airportID
+
+	-- Checking that the flightID is valid
+    if ip_flightID is null then 
+		leave sp_main; 
+    end if;
+    
+    -- Check if there is a grounded flight with the inputted flightID
+    if not exists (select 1 from flight where flightID = ip_flightID and status = 'on_ground') then
+        leave sp_main;
+    end if; 
+
+    -- Setting arr_airport
+    select arrival into arr_airport from (flight join route_path on flight.routeID = route_path.routeID) join leg on route_path.legID = leg.legID 
+	where route_path.sequence = flight.progress and flight.flightID = ip_flightID;
+    
+    -- Setting arr_loc
+    select locationID into arr_loc from airport where airport.airportID = arr_airport;
+    
+    -- Updating the locationID of any passengers who are on the plane and have reached their destination 
+    update person set locationID = arr_loc where personID in 
+		(select * from (passenger left join person on passenger.personID = person.personID join passenger_vacations on passenger.personID = passenger_vacations.personID) 
+		join (airplane join flight on airplane.tail_num = flight.support_tail) on airplane.locationID = person.locationID
+		where flight.flightID = ip_flightID and passenger_vacations.airportID = arr_airport);
 end //
 delimiter ;
 
