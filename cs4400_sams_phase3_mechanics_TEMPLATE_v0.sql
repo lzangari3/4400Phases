@@ -371,11 +371,13 @@ sp_main: begin
     declare v_cost int;
     declare v_cap int;
     if ip_flightID is null then leave sp_main; end if;
-    if not exists (select 1 from flight where flightID = ip_flightID and status = 'ground') then
+    if not exists (select 1 from flight where flightID = ip_flightID and status = 'on_ground') then
         leave sp_main;
     end if;
-    select support_tail, support_airline, cost into v_tail, v_airline, v_cost from flight where flightID = ip_flightID;
-    select locationID, seat_cap into v_loc, v_cap from airplane where airlineID = v_airline and tail_num = v_tail;
+    select support_tail, support_airline, cost into v_tail, v_airline, v_cost
+		from flight where flightID = ip_flightID;
+    select locationID, seat_cap into v_loc, v_cap from airplane
+		where airlineID = v_airline and tail_num = v_tail;
     insert into passenger(flightID, personID)
     select ip_flightID, personID from person
     where locationID = v_loc and funds >= v_cost
@@ -457,6 +459,13 @@ sp_main: begin
 		f.support_airline = a.airlineID and f.support_tail = a.tail_num join location l on 
         a.locationID = l.locationID where f.flightID = ip_flightID;
         
+	-- check to see if passengers are still on the flight and leave if so
+    if (select count(*) from passenger pa join person pe on pe.personID = pa.personID 
+		join location l on l.locationID = pe.locationID where l.locationID = flight_location)
+        > 0 then
+			leave sp_main; -- leave because passengers are still there
+	end if;
+        
 	-- now we go through the pilot table and free pilots from this flight. 
     update pilot set commanding_flight = null where personID in 
 		(select personID from pilot where commanding_flight = ip_flightID);
@@ -465,6 +474,7 @@ sp_main: begin
     select arrival into airport_location from flight f join route_path rp on
 		f.routeID = rp.routeID join leg le on le.legID = rp.legID where
 		rp.sequence = (select progress from flight where flightID = ip_flightID);
+        
     -- we also need to update the location values for recycled crew
     update person set locationID = airport_location where personID in 
 		(select personID from pilot where commanding_flight = ip_flightID);
@@ -473,23 +483,49 @@ end //
 delimiter ;
 
 -- [12] retire_flight()
--- Retires a flight that is on the ground, at the start or end of its route,
+-- Retires a flight that is on the ground, at the end of its route,
 -- and has no passengers or crew left onboard.
 drop procedure if exists retire_flight;
 delimiter //
 create procedure retire_flight (in ip_flightID varchar(50))
 sp_main: begin
-	declare v_status varchar(10);
     declare v_prog int;
     declare v_max int;
-    if ip_flightID is null then leave sp_main; end if;
-    select status, progress into v_status, v_prog from flight where flightID = ip_flightID;
-    select max(sequence) into v_max from leg where routeID = (select routeID from flight where flightID = ip_flightID);
-    if v_status != 'on_ground' then leave sp_main; end if;
-    if v_prog != 0 and v_prog != v_max then leave sp_main; end if;
-    if exists (select 1 from passenger where flightID = ip_flightID) then leave sp_main; end if;
-    if exists (select 1 from crew where flightID = ip_flightID) then leave sp_main; end if;
-    update flight set status = 'ended' where flightID = ip_flightID;
+    declare flight_location varchar(50);
+    
+    if ip_flightID is null then leave sp_main; end if; -- leave if flight is not valid
+    
+    if not exists (select 1 from flight where flightID = ip_flightID) then
+		leave sp_main; -- leave if flight doesn't exist
+	end if;
+    
+    -- set the flight location (from the airplane)
+    select locationID into flight_location from flight f join airplane a on
+		f.support_airline = a.airlineID and f.support_tail = a.tail_num join location l on 
+        a.locationID = l.locationID where f.flightID = ip_flightID;
+        
+	-- if we query and get != 0 size, then pilots and/or passengers are still on plane
+    if (select count(*) from person where locationID = flight_location) > 0 then
+		leave sp_main; -- leave if ppl still on plane
+	end if;
+    
+    -- if we're not on_ground, leave
+    if (select airplane_status from flight where flightID = ip_flightID)
+		!= 'on_ground' then 
+			leave sp_main; -- leave cause we're still in the air. 
+	end if;
+    
+    -- now we will leave if we are not at the end of the flight
+	if (select count(*) from route_path where routeID =
+		(select routeID from flight where flightID = ip_flightID)) != (select progress from flight
+		where flightID = ip_flightID) then
+        
+        leave sp_main; -- we leave if the #(legs) != flight progress
+        
+	end if;
+    -- this will only happen assuming the flight 
+    -- is on_ground, no ppl on it, and has reached final stop
+    delete from flight where flightID = ip_flightID;
 end //
 delimiter ;
 
@@ -532,8 +568,8 @@ delimiter ;
 -- Shows departure and arrival airports, number of flights, flight IDs,
 -- airplane IDs, and earliest/latest arrival times grouped by route.
 create or replace view flights_in_the_air as
-select l.depart as departing_from,
-       l.arrives as arriving_at,
+select l.departure as departing_from,
+       l.arrival as arriving_at,
        count(distinct f.flightID) as num_flights,
        group_concat(distinct f.flightID order by f.flightID) as flight_list,
        min(f.next_time) as earliest_arrival,
