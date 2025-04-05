@@ -196,10 +196,10 @@ sp_main: begin
     if not exists (select 1 from pilot where personID = ip_personID) then -- we check if this personID relates to a pilot
 		leave sp_main;
 	end if;
-    if exists (select 1 from pilot where personID = ip_personID and license = ip_license) then
-        delete from pilot where personID = ip_personID and license = ip_license; -- remove license if exists
+    if exists (select 1 from pilot_licenses where personID = ip_personID and license = ip_license) then
+        delete from pilot_licenses where personID = ip_personID and license = ip_license; -- remove license if exists
     else
-        insert into pilot_license(personID, license) values (ip_personID, ip_license);
+        insert into pilot_licenses(personID, license) values (ip_personID, ip_license);
     end if;
 end //
 delimiter ;
@@ -228,7 +228,7 @@ sp_main: begin
     
     if ip_support_airline is not null and ip_support_tail is not null then -- we have a plane to assign
         if exists (select 1 from flight where support_airline = ip_support_airline 
-			and support_tail = ip_support_tail and status != 'on_ground') then
+			and support_tail = ip_support_tail and airplane_status != 'on_ground') then
             leave sp_main; -- leave if associated plane is still active
         end if;
         if not exists (select 1 from airplane where airlineID = ip_support_airline and 
@@ -240,7 +240,8 @@ sp_main: begin
         -- Goal: Our next time must be < routeID's final stop time
         -- we also have our planes speed time
         select speed into plane_speed from airplane -- save plane speed
-			where concat(airlineID, tail_num) = concat(ip_airlineID, ip_tail_num);
+			where concat(airlineID, tail_num) = concat(
+				ip_support_airline, ip_support_tail);
             
 		SELECT SUM(distance) * 3600 / plane_speed into total_leg_distance
 		FROM 
@@ -259,7 +260,7 @@ sp_main: begin
     
 
     -- everything has checked out fine, so we do our insertions
-    insert into flight(flightID, routeID, support_airline, support_tail, progress, next_time, cost, status)
+    insert into flight(flightID, routeID, support_airline, support_tail, progress, next_time, cost, airplane_status)
     values (ip_flightID, ip_routeID, ip_support_airline, ip_support_tail,
 		ip_progress, ip_next_time, ip_cost, 'on_ground');
 end //
@@ -277,19 +278,24 @@ sp_main: begin
     declare curr_routeID varchar(50);
     
     if ip_flightID is null then leave sp_main; end if;
-    if not exists (select 1 from flight where flightID = ip_flightID and status = 'air') then
+    if not exists (select 1 from flight where flightID = ip_flightID and airplane_status = 'in_flight') then
         leave sp_main; -- leave if flightID isn't valid
-    end if;
+    end if; 
     
-    update flight set status = 'on_ground', next_time = addtime(next_time, '01:00:00'),
+    update flight set airplane_status = 'on_ground', 
+		next_time = addtime(next_time, '01:00:00'),
 		progress = progress + 1
     where flightID = ip_flightID;
     
     select progress into curr_progress from flight where flightID = ip_flightID;
     select routeID into curr_routeID from flight where flightID = ip_flightID;
     
-    update pilot set experience = experience + 1 where personID
-		in (select personID from pilot where commanding_flight = ip_flightID);
+    -- update pilot set experience = experience + 1 where personID
+-- 		in (select pilot.personID from person join pilot on
+--         person.personID = pilot.personID where commanding_flight = ip_flightID);
+
+	update person join pilot on person.personID = pilot.personID 
+		set pilot.experience = experience + 1 where pilot.commanding_flight = ip_flightID;
         
     update passenger set miles = miles + (select distance from route_path rp
 		join leg l on rp.legID = l.legID where rp.routeID = curr_routeID
@@ -312,7 +318,7 @@ sp_main: begin
     declare plane_type varchar(50);
     
     if ip_flightID is null then leave sp_main; end if;
-    if not exists (select 1 from flight where flightID = ip_flightID and status = 'on_ground') then
+    if not exists (select 1 from flight where flightID = ip_flightID and airplane_status = 'on_ground') then
 		leave sp_main; end if; -- leave if invalid flightID or if we're on the ground
         
 	-- at this point, ip_flightID is valid
@@ -321,7 +327,8 @@ sp_main: begin
     
     -- Goal: establish plane type first
     if (select isnull(neo) from flight f join airplane a
-		on f.supporting_airline = a.airlineID and f.supporting_tail = a.tail_num) = 1
+		on f.support_airline = a.airlineID and f.support_tail = a.tail_num
+        where f.flightID = ip_flightID) = 1
         then -- plane is boeing
         set plane_type = 'boeing';
         
@@ -348,12 +355,12 @@ sp_main: begin
 			and tail_num = (select support_tail from flight
 			where flightID = ip_flightID);
             
-    select distance into v_distance from leg where routeID
-		= (select routeID from flight where flightID = ip_flightID)
+    select distance into v_distance from leg l join route_path rp on l.legID = rp.legID
+		where rp.routeID = (select routeID from flight where flightID = ip_flightID)
 		and sequence = (select progress from flight where flightID = ip_flightID) + 1;
         
     set v_duration = leg_time(v_distance, v_speed);
-    update flight set status = 'air', next_time = addtime(next_time, v_duration)
+    update flight set airplane_status = 'in_flight', next_time = addtime(next_time, v_duration)
 		where flightID = ip_flightID;
 end //
 delimiter ;
@@ -382,7 +389,7 @@ sp_main: begin
     end if;
 
 	-- Setting curr_seq and max_leg 
-    select progress + 1 into curr_seq from flight where flight.flightID = ip_flightID; -- Increment by 1 to match the correct sequence
+    select progress + 1 into curr_seq from flight where flight.flightID = ip_flightID; -- Increment by 1 to match the correct sequence (Make sure this is correct)
     select count(sequence) into max_leg from route_path join flight on route_path.routeID = flight.routeID
 	where flight.flightID = ip_flightID;
 
@@ -399,13 +406,15 @@ sp_main: begin
 		-- find all of the people who are passangers (join the passanger and person table), and then find their location
 		-- After that, get the current leg of the flight and then compare the departing airport to the passengers location (must be the same)
         
-        -- This query finds all of the passengers who are at the departing airport and their vacation intentions. 
+        -- This query finds all of the passengers who are at the departing airport (also contains their vacation intentions). 
         select * from (passenger left join person on passenger.personID = person.personID join passenger_vacations on passenger.personID = passenger_vacations.personID)
 			join airport on airport.locationID = person.locationID
 			where airport.airportID = dep_airport;
         
 		-- Then check that the passengers vacation intentions match one of the airports in the flights route path
 			-- Also, remember that you need to check the remaining airports
+            
+            
             
 		-- This is kinda tricky since you need to know all of the remaining destinations on the flight and also account 
         -- for any sequence vacation intentions. 
@@ -417,6 +426,24 @@ sp_main: begin
     
     select support_tail, support_airline, cost into v_tail, v_airline, v_cost from flight where flightID = ip_flightID;
     select locationID, seat_cap into v_loc, v_cap from airplane where airlineID = v_airline and tail_num = v_tail;
+    
+    -- Stuff from the original Main
+    
+	declare v_tail varchar(50);
+    declare v_airline varchar(50);
+    declare v_loc varchar(50);
+    declare v_cost int;
+    declare v_cap int;
+    if ip_flightID is null then leave sp_main; end if;
+    if not exists (select 1 from flight where flightID = ip_flightID and status = 'on_ground') then
+        leave sp_main;
+    end if;
+    select support_tail, support_airline, cost into v_tail, v_airline, v_cost
+		from flight where flightID = ip_flightID;
+    select locationID, seat_cap into v_loc, v_cap from airplane
+		where airlineID = v_airline and tail_num = v_tail;
+    
+    -- end stuff from original Main
     
     insert into passenger(flightID, personID)
     select ip_flightID, personID from person
@@ -597,11 +624,11 @@ create procedure simulation_cycle ()
 sp_main: begin
     declare v_flightID varchar(50);
     declare v_status varchar(10);
-    select flightID, status into v_flightID, v_status
+    select flightID, airplane_status into v_flightID, v_status
     from flight
-    where next_time = (select min(next_time) from flight where status != 'ended')
-    order by field(status, 'air', 'ground'), flightID limit 1;
-    if v_status = 'air' then
+    where next_time = (select min(next_time) from flight where airplane_status != 'ended')
+    order by field(airplane_status, 'air', 'ground'), flightID limit 1;
+    if v_status = 'in_flight' then
         call flight_landing(v_flightID);
         call passengers_disembark(v_flightID);
     else
@@ -610,7 +637,7 @@ sp_main: begin
     end if;
     if exists (
         select 1 from flight
-        where flightID = v_flightID and status = 'ground'
+        where flightID = v_flightID and airplane_status = 'on_ground'
           and progress = (select max(sequence) from leg where routeID = (select routeID from flight where flightID = v_flightID))
     ) then
         call recycle_crew(v_flightID);
