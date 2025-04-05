@@ -568,107 +568,131 @@ delimiter ;
 -- Shows departure and arrival airports, number of flights, flight IDs,
 -- airplane IDs, and earliest/latest arrival times grouped by route.
 create or replace view flights_in_the_air as
-select l.departure as departing_from,
-       l.arrival as arriving_at,
-       count(distinct f.flightID) as num_flights,
-       group_concat(distinct f.flightID order by f.flightID) as flight_list,
-       min(f.next_time) as earliest_arrival,
-       max(f.next_time) as latest_arrival,
-       group_concat(distinct f.support_tail order by f.support_tail) as airplane_list
+select
+	l.departure as departing_from, 
+	l.arrival as arriving_at,
+    COUNT(f.flightID) as num_flights,
+    GROUP_CONCAT(f.flightID SEPARATOR ',') as flight_list,
+    MIN(f.next_time) as earliest_arrival,
+    MAX(f.next_time) as latest_arrival,
+    GROUP_CONCAT(a.locationID SEPARATOR ',') as airplane_list
 from flight f
-join route r on f.routeID = r.routeID
-join leg l on r.routeID = l.routeID and l.sequence = f.progress + 1
-where f.status = 'air'
-group by l.depart, l.arrives;
+join route_path r on f.routeID = r.routeID and f.progress = r.sequence
+join leg l on r.legID = l.legID
+join airplane a on f.support_airline = a.airlineID and f.support_tail = a.tail_num
+where f.airplane_status = 'in_flight'
+group by l.departure, l.arrival;
 
 -- [15] flights_on_the_ground()
 -- Displays flights currently on the ground.
 -- Shows departing airport, number of flights, flight IDs,
 -- airplane IDs, and earliest/latest scheduled arrivals.
 create or replace view flights_on_the_ground as
-select l.depart as departing_from,
-       count(distinct f.flightID) as num_flights,
-       group_concat(distinct f.flightID order by f.flightID) as flight_list,
-       min(f.next_time) as earliest_arrival,
-       max(f.next_time) as latest_arrival,
-       group_concat(distinct f.support_tail order by f.support_tail) as airplane_list
+(select
+	l.arrival as departing_from, 
+    COUNT(f.flightID) as num_flights,
+    GROUP_CONCAT(f.flightID SEPARATOR ',') as flight_list,
+    MIN(f.next_time) as earliest_arrival,
+    MAX(f.next_time) as latest_arrival,
+    GROUP_CONCAT(a.locationID SEPARATOR ',') as airplane_list
 from flight f
-join route r on f.routeID = r.routeID
-join leg l on r.routeID = l.routeID and l.sequence = f.progress + 1
-where f.status = 'ground'
-group by l.depart;
+join route_path r on f.routeID = r.routeID and f.progress = r.sequence
+join leg l on r.legID = l.legID
+join airplane a on f.support_airline = a.airlineID and f.support_tail = a.tail_num
+where f.airplane_status = 'on_ground'
+group by l.arrival) -- deals with the planes that are not just starting (at location 0)
+union
+(select
+	l.departure as departing_from, 
+    COUNT(f.flightID) as num_flights,
+    GROUP_CONCAT(f.flightID SEPARATOR ',') as flight_list,
+    MIN(f.next_time) as earliest_arrival,
+    MAX(f.next_time) as latest_arrival,
+    GROUP_CONCAT(a.locationID SEPARATOR ',') as airplane_list
+from flight f
+join route_path r on f.routeID = r.routeID and f.progress = r.sequence - 1
+join leg l on r.legID = l.legID
+join airplane a on f.support_airline = a.airlineID and f.support_tail = a.tail_num
+where f.airplane_status = 'on_ground' and f.progress = 0
+group by l.departure); -- deals with the planes that are not just starting (at location 0)
 
 -- [16] people_in_the_air()
 -- Shows who is currently in the air.
 -- Includes route info, airplane IDs, flight IDs, arrival times,
 -- number of pilots, number of passengers, and full passenger list.
 create or replace view people_in_the_air as
-select l.depart as departing_from,
-       l.arrives as arriving_at,
-       count(distinct a.locationID) as num_airplanes,
-       group_concat(distinct a.locationID order by a.locationID) as airplane_list,
-       group_concat(distinct f.flightID order by f.flightID) as flight_list,
-       min(f.next_time) as earliest_arrival,
-       max(f.next_time) as latest_arrival,
-       count(distinct pc.personID) as num_pilots,
-       count(distinct pp.personID) as num_passengers,
-       count(distinct p.personID) as joint_pilots_passengers,
-       group_concat(distinct p.personID order by p.personID) as person_list
+select
+	l.departure as departing_from, 
+	l.arrival as arriving_at,
+    COUNT(distinct a.locationID) as num_airplanes,
+    GROUP_CONCAT(distinct a.locationID SEPARATOR ',') as airplane_list,
+    GROUP_CONCAT(distinct f.flightID SEPARATOR ',') as flight_list,
+    MIN(f.next_time) as earliest_arrival,
+    MAX(f.next_time) as latest_arrival,
+    COUNT(distinct pp.personID) as num_pilots,
+    COUNT(distinct ppp.personID) as num_passengers,
+    COUNT(distinct p.personID) as joint_pilots_passengers,
+    GROUP_CONCAT(distinct p.personID SEPARATOR ',') as person_list
 from flight f
-join route r on f.routeID = r.routeID
-join leg l on r.routeID = l.routeID and l.sequence = f.progress + 1
-join airplane a on a.airlineID = f.support_airline and a.tail_num = f.support_tail
-left join crew pc on pc.flightID = f.flightID
-left join passenger pp on pp.flightID = f.flightID
-left join person p on p.personID = pc.personID or p.personID = pp.personID
-where f.status = 'air'
-group by l.depart, l.arrives;
+join route_path r on f.routeID = r.routeID and f.progress = r.sequence
+join leg l on r.legID = l.legID
+join airplane a on f.support_airline = a.airlineID and f.support_tail = a.tail_num
+join person p on p.locationID = a.locationID -- For some reason a pilot might be assigned to a flight but not commanding it rn
+left join pilot pp on f.flightID = pp.commanding_flight and pp.personID = p.personID
+left join passenger ppp on ppp.personID = p.personID  
+where f.airplane_status = 'in_flight'
+group by l.departure, l.arrival;
 
 -- [17] people_on_the_ground()
 -- Shows people located at airports on the ground.
 -- Lists airport details, city/state/country, counts of passengers and pilots,
 -- and the full list of people by ID.
 create or replace view people_on_the_ground as
-select ap.airportID as departing_from,
-       ap.locationID as airport,
-       ap.name as airport_name,
-       l.city,
-       l.state,
-       l.country,
-       sum(case when p.personID in (select personID from crew) then 1 else 0 end) as num_pilots,
-       sum(case when p.personID in (select personID from passenger) then 1 else 0 end) as num_passengers,
-       count(p.personID) as joint_pilots_passengers,
-       group_concat(distinct p.personID order by p.personID) as person_list
+select
+	a.airportID as departing_from,
+    a.locationID as arriving_at,
+    GROUP_CONCAT(distinct a.airport_name SEPARATOR ',') as airport_name,
+    GROUP_CONCAT(distinct a.city SEPARATOR ',') as city,
+    GROUP_CONCAT(distinct a.state SEPARATOR ',') as state,
+	GROUP_CONCAT(distinct a.country SEPARATOR ',') as country,
+    COUNT(distinct pp.personID) as num_pilots,
+    COUNT(distinct ppp.personID) as num_passengers,
+    COUNT(distinct p.personID) as joint_pilots_passengers,
+    GROUP_CONCAT(distinct p.personID SEPARATOR ',')
 from person p
-join location l on p.locationID = l.locationID
-join airport ap on ap.locationID = l.locationID
-group by ap.airportID, ap.locationID, ap.name, l.city, l.state, l.country;
+join airport a on p.locationID = a.locationID
+left join pilot pp on pp.personID = p.personID
+left join passenger ppp on ppp.personID = p.personID
+group by a.airportID, a.locationID;
 
 -- [18] route_summary()
 -- Summarizes every route by showing number of legs, total distance,
 -- airport sequence, leg path summary, and associated flights.
 create or replace view route_summary as
-select r.routeID as route,
-       count(l.legID) as num_legs,
-       group_concat(concat(l.sequence, ':', l.depart, '->', l.arrives) order by l.sequence) as leg_sequence,
-       sum(l.distance) as route_length,
-       count(distinct f.flightID) as num_flights,
-       group_concat(distinct f.flightID order by f.flightID) as flight_list,
-       group_concat(distinct l.depart order by l.sequence) as airport_sequence
-from route r
-join leg l on r.routeID = l.routeID
-left join flight f on r.routeID = f.routeID
-group by r.routeID;
+select 
+	rp.routeID as route,
+    COUNT(distinct rp.legID) as num_legs,
+    GROUP_CONCAT(distinct rp.legID order by rp.sequence asc SEPARATOR ',') as leg_sequence,
+    SUM(l.distance) DIV (CASE WHEN COUNT(distinct f.flightID) = 0 THEN 1 ELSE COUNT(distinct f.flightID) END) AS route_length,
+    COUNT(distinct f.flightID) as num_flights,
+    GROUP_CONCAT(distinct f.flightID SEPARATOR ',') as flight_list,
+    GROUP_CONCAT(distinct CONCAT(l.departure, '->', l.arrival) order by rp.sequence SEPARATOR ',') as airport_sequence
+from route_path rp
+join leg l on  rp.legID = l.legID
+left join flight f on rp.routeID = f.routeID
+group by rp.routeID;
 
 -- [19] alternative_airports()
 -- Identifies cities/states that have more than one airport.
 -- Lists all airport codes and names in those locations.
 create or replace view alternative_airports as
-select l.city, l.state, l.country,
-       count(distinct a.airportID) as num_airports,
-       group_concat(distinct a.airportID order by a.airportID) as airport_code_list,
-       group_concat(distinct a.name order by a.name) as airport_name_list
+select
+	a.city as city,
+    a.state as state,
+    a.country as country,
+    COUNT(distinct a.airportID) as num_airports,
+    GROUP_CONCAT(a.airportID SEPARATOR ',') as airport_code_list,
+    GROUP_CONCAT(a.airport_name SEPARATOR ',') as airport_name_list
 from airport a
-join location l on a.locationID = l.locationID
-group by l.city, l.state, l.country
-having count(distinct a.airportID) > 1;
+group by a.city, a.state, a.country
+having COUNT(distinct a.airportID) > 1;
