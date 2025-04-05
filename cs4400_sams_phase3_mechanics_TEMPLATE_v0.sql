@@ -514,13 +514,53 @@ sp_main: begin
     declare v_loc varchar(50);
     declare v_tail varchar(50);
     declare v_airline varchar(50);
-    if ip_flightID is null or ip_personID is null then leave sp_main; end if;
+    declare curr_airport_location varchar(50);
+    
+    -- if ip_flightID is null or ip_personID is null then leave sp_main; end if; -- leave if flight or person is null
+    -- select support_airline into v_airline, support_tail into v_tail from flight where flightID = ip_flightID;
+    -- select model into v_model, locationID into v_loc from airplane where airlineID = v_airline and tail_num = v_tail;
+    
+    if ip_flightID is null or ip_personID is null then
+		leave sp_main; -- our keys are null
+	end if;
+    
     select support_airline, support_tail into v_airline, v_tail from flight where flightID = ip_flightID;
-    select model, locationID into v_model, v_loc from airplane where airlineID = v_airline and tail_num = v_tail;
-    if not exists (select 1 from pilot where personID = ip_personID and license = v_model) then leave sp_main; end if;
-    if (select locationID from person where personID = ip_personID) != v_loc then leave sp_main; end if;
-    if exists (select 1 from crew where personID = ip_personID) then leave sp_main; end if;
-    insert into crew(flightID, personID) values (ip_flightID, ip_personID);
+    
+    select plane_type, locationID into v_model, v_loc from airplane where 
+		v_airline = airlineID and v_tail = tail_num;
+    
+    -- leave if personID doesn't correspond to a pilot
+    if not exists (select 1 from pilot where personID = ip_personID) then leave sp_main; end if;
+    -- leave if flight is DNE
+    if not exists (select 1 from flight where flightID = ip_flightID) then leave sp_main; end if;
+    
+    if (select airplane_status from flight where flightID = ip_flightID) != 'on_ground' then
+		leave sp_main; -- we leave if the flight is not grounded. 
+	end if;
+    
+    if (select isnull(commanding_flight) from pilot where personID = ip_personID) != 1 then
+		leave sp_main; -- leave if pilot already commanding a flight. 
+	end if;
+    
+    
+    -- if we have a pilot, we have to check that they can pilot the aircraft
+    if v_model not in (select license from pilot_licenses where personID = ip_personID)
+	and ('general' not in (select license from pilot_licenses where personID = ip_personID)) then
+		leave sp_main;
+	end if;
+    
+    -- if we make it here, out pilot is good to pilot the aircraft and the plane is grounded
+	-- if (select locationID from person where personID = ip_personID) != v_loc then leave sp_main; end if;
+    
+    -- big check: we need to ensure this pilot is at the same spot as the plane
+    -- 1st we see the location of the plane
+    select airport.locationID into curr_airport_location from flight f join
+    route_path rp on f.routeID = rp.routeID join leg l on 
+	l.legID = rp.legID join airport on airport.airportID = l.arrival
+    where f.flightID = ip_flightID and rp.sequence = f.progress;
+    
+    if v_loc != curr_airport_location then leave sp_main; end if; -- we leave if plane and pilot aren't together
+    
     update person set locationID = v_loc where personID = ip_personID;
 end //
 delimiter ;
