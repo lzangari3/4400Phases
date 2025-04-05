@@ -617,27 +617,43 @@ drop procedure if exists simulation_cycle;
 delimiter //
 create procedure simulation_cycle ()
 sp_main: begin
-    -- declare v_flightID varchar(50);
---     declare v_status varchar(10);
---     select flightID, airplane_status into v_flightID, v_status
---     from flight
---     where next_time = (select min(next_time) from flight where airplane_status != 'ended')
---     order by field(airplane_status, 'air', 'ground'), flightID limit 1;
---     if v_status = 'in_flight' then
---         call flight_landing(v_flightID);
---         call passengers_disembark(v_flightID);
---     else
---         call passengers_board(v_flightID);
---         call flight_takeoff(v_flightID);
---     end if;
---     if exists (
---         select 1 from flight
---         where flightID = v_flightID and airplane_status = 'on_ground'
---           and progress = (select max(sequence) from leg where routeID = (select routeID from flight where flightID = v_flightID))
---     ) then
---         call recycle_crew(v_flightID);
---         call retire_flight(v_flightID);
---     end if;
+    declare v_flightID varchar(50);
+    declare v_status varchar(10);
+    declare v_dist int;
+    declare v_speed int;
+    select flightID, airplane_status into v_flightID, v_status
+    from flight
+    where next_time = (select min(next_time) from flight)
+    order by field(airplane_status, 'in_flight', 'on_ground'), flightID limit 1;
+    if v_status = 'in_flight' then
+        call flight_landing(v_flightID);
+        call passengers_disembark(v_flightID);
+        update flight set next_time =  addtime(next_time, '01:00:00') where flightID = v_flightID;
+    else
+        call passengers_board(v_flightID);
+        call flight_takeoff(v_flightID);
+        -- gets the sum of all the distances (hopefully does not double count anything)
+        select l.distance into v_dist
+			from flight f join route_path rp on f.routeID = rp.routeID and f.progress + 1 = rp.sequence 
+			join leg l on rp.legID = l.legID 
+			where f.flightID = v_flightID;
+		-- gets the speed
+		select a.speed into v_speed
+			from flight f join airplane a on f.support_airline = a.airlineID and f.support_tail = a.tail_num
+			where f.flightID = v_flightID;
+         update flight set next_time =  next_time + INTERVAL (v_dist_sum DIV v_speed) HOUR where flightID = v_flightID;
+    end if;
+    if exists (
+        select 1 from flight
+        where flightID = v_flightID and airplane_status = 'on_ground'
+          and progress = (select max(sequence) 
+			from route_path
+            where flightID = v_flightID
+            group by flightID)
+    ) then
+        call recycle_crew(v_flightID);
+        call retire_flight(v_flightID);
+    end if;
 end //
 delimiter ;
 
