@@ -212,7 +212,7 @@ sp_main: begin
 	declare plane_speed int;   
     declare total_leg_distance int;
     
-    if ip_flightID is null or ip_routeID is null or ip_next_time is null or ip_cost is null then
+    if ip_flightID is null or ip_routeID is null or ip_next_time is null then
         leave sp_main;
     end if;
     if not exists (select 1 from route where routeID = ip_routeID) then -- leave if our route isn't valid
@@ -232,28 +232,32 @@ sp_main: begin
         -- still assuming that we're given a valid plane
         -- Goal: Our next time must be < routeID's final stop time
         -- we also have our planes speed time
-        select speed into plane_speed from airplane -- save plane speed
-			where concat(airlineID, tail_num) = concat(
-				ip_support_airline, ip_support_tail);
-            
-		SELECT SUM(distance) * 3600 / plane_speed into total_leg_distance
-		FROM 
-			route r JOIN route_path rp ON r.routeID = rp.routeID
-			JOIN leg l ON l.legID = rp.legID
-		WHERE 
-			rp.routeID = ip_routeID and ip_progress < rp.sequence;
-            
-		-- SELECT ADDTIME('2025-03-31 10:00:00', '02:15:00') AS new_time;
-		if ip_next_time > (select leg_time(total_leg_distance, plane_speed)) then
-            leave sp_main; -- leave if our next time is after the stop time
-		end if;
-            
+        -- select speed into plane_speed from airplane -- save plane speed
+-- 			where concat(airlineID, tail_num) = concat(
+-- 				ip_support_airline, ip_support_tail);
+--             
+-- 		SELECT SUM(distance) * 3600 / plane_speed into total_leg_distance
+-- 		FROM 
+-- 			route r JOIN route_path rp ON r.routeID = rp.routeID
+-- 			JOIN leg l ON l.legID = rp.legID
+-- 		WHERE 
+-- 			rp.routeID = ip_routeID and ip_progress < rp.sequence;
+--             
+-- 		-- SELECT ADDTIME('2025-03-31 10:00:00', '02:15:00') AS new_time;
+-- 		if ip_next_time > (select leg_time(total_leg_distance, plane_speed)) then
+--             leave sp_main; -- leave if our next time is after the stop time
+-- 		end if;
+            if (ip_progress) >= (select max(sequence) from route_path
+            where routeID = ip_routeID group by routeID) then 
+				leave sp_main; -- leave bc we start at end
+			end if;
             
     end if; -- end of nester
     
 
     -- everything has checked out fine, so we do our insertions
-    insert into flight(flightID, routeID, support_airline, support_tail, progress, next_time, cost, airplane_status)
+    insert into flight(flightID, routeID, support_airline, support_tail, progress,
+    next_time, cost, airplane_status)
     values (ip_flightID, ip_routeID, ip_support_airline, ip_support_tail,
 		ip_progress, ip_next_time, ip_cost, 'on_ground');
 end //
@@ -272,7 +276,8 @@ sp_main: begin
     declare plane_loc varchar(50);
  
     if ip_flightID is null then leave sp_main; end if;
-    if not exists (select 1 from flight where flightID = ip_flightID and airplane_status = 'in_flight') then
+    if not exists (select 1 from flight where flightID = ip_flightID
+    and airplane_status = 'in_flight') then
         leave sp_main;
     end if;
  
@@ -285,7 +290,8 @@ sp_main: begin
  
     -- select progress into curr_progress from flight where flightID = ip_flightID;
     -- select routeID into curr_routeID from flight where flightID = ip_flightID;
-	select locationID into plane_loc from flight f join airplane a on f.support_tail = a.tail_num and f.support_airline = a.airlineID
+	select locationID into plane_loc from flight f join airplane a
+    on f.support_tail = a.tail_num and f.support_airline = a.airlineID
 		where f.flightID = ip_flightID;
  
 	-- maybe add location info later
@@ -295,7 +301,8 @@ sp_main: begin
         
     update passenger pp join person p on pp.personID = p.personID 
     set miles = miles + (
-        select l.distance from flight f join route_path rp on f.routeID = rp.routeID and f.progress = rp.sequence
+        select l.distance from flight f join route_path rp on f.routeID = rp.routeID
+        and f.progress = rp.sequence
         join leg l on rp.legID = l.legID
         where f.flightID = ip_flightID) 
 	where p.locationID = plane_loc;
@@ -316,7 +323,8 @@ sp_main: begin
     declare plane_type varchar(100);
 
     if ip_flightID is null then leave sp_main; end if;
-    if not exists (select 1 from flight where flightID = ip_flightID and airplane_status = 'on_ground') then
+    if not exists (select 1 from flight where flightID = ip_flightID
+    and airplane_status = 'on_ground') then
         leave sp_main;
     end if;
 
@@ -333,7 +341,8 @@ sp_main: begin
         leave sp_main;
     end if;
 
-    select speed into v_speed from airplane a join flight f on a.airlineID = f.support_airline and a.tail_num = f.support_tail
+    select speed into v_speed from airplane a join flight f on
+    a.airlineID = f.support_airline and a.tail_num = f.support_tail
 		where f.flightID = ip_flightID;
 
     select distance into v_distance from leg l join route_path rp on l.legID = rp.legID
@@ -368,7 +377,8 @@ sp_main: begin
 
     if ip_flightID is null then leave sp_main; end if;
 
-    if not exists (select 1 from flight where flightID = ip_flightID and airplane_status = 'on_ground') then
+    if not exists (select 1 from flight where flightID = ip_flightID
+    and airplane_status = 'on_ground') then
         leave sp_main;
     end if;
 
@@ -384,7 +394,9 @@ sp_main: begin
     join leg l on rp.legID = l.legID
     where f.flightID = ip_flightID and rp.sequence = curr_seq;
 
-    select support_airline, support_tail into v_airline, v_tail from flight where flightID = ip_flightID;
+    select support_airline, support_tail into v_airline, v_tail from
+    flight where flightID = ip_flightID;
+    
     select seat_capacity, locationID into v_capacity, v_location from airplane
     where airlineID = v_airline and tail_num = v_tail;
 
@@ -407,7 +419,7 @@ sp_main: begin
     group by pa.personID
     limit v_capacity;
 
-    -- Move selected passengers to plane and deduct ticket cost.
+    -- Move selected passengers to plane and deduct ticket cost
     update person p
     join eligible_boarding eb on p.personID = eb.personID
     set p.locationID = v_location;
@@ -436,8 +448,9 @@ sp_main: begin
 		leave sp_main; 
     end if;
     
-    -- Check if there is a grounded flight with the inputted flightID
-    if not exists (select 1 from flight where flightID = ip_flightID and airplane_status = 'on_ground') then
+    -- Check if there is a grounded flight with the flightID
+    if not exists (select 1 from flight where flightID 
+    = ip_flightID and airplane_status = 'on_ground') then
         leave sp_main;
     end if; 
 
@@ -677,8 +690,8 @@ sp_main: begin
 		select a.speed into v_speed
 			from flight f join airplane a on f.support_airline = a.airlineID and f.support_tail = a.tail_num
 			where f.flightID = v_flightID;
-         update flight set next_time =  next_time + INTERVAL (v_dist_sum DIV v_speed) HOUR where flightID = v_flightID;
-    end if;
+		update flight set next_time =  next_time + leg_time(v_distance, v_speed) where flightID = v_flightID;    
+	end if;
     if exists (
         select 1 from flight
         where flightID = v_flightID and airplane_status = 'on_ground'
