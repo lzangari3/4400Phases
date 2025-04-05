@@ -54,38 +54,26 @@ create procedure add_airplane (
     in ip_neo boolean
 )
 sp_main: begin
-    if ip_airlineID is null or ip_tail_num is null or ip_seat_capacity is null or ip_speed is null or ip_locationID is null then
+        if ip_airlineID is null or ip_tail_num is null or ip_seat_capacity is null or ip_speed is null or ip_locationID is null then
         leave sp_main;
     end if;
     if ip_seat_capacity <= 0 or ip_speed <= 0 then
         leave sp_main;
     end if;
-    if not exists (select 1 from airline where airlineID = ip_airlineID) then -- if airline doesn't exist
+    if not exists (select 1 from airline where airlineID = ip_airlineID) then
         leave sp_main;
     end if;
-    if exists (select 1 from airplane where airlineID = ip_airlineID and tail_num = ip_tail_num) then -- does airplane exist
+    if exists (select 1 from airplane where airlineID = ip_airlineID and tail_num = ip_tail_num) then
         leave sp_main;
     end if;
-    if exists (select 1 from location where locationID = ip_locationID) then -- leave if location alr exists
-		leave sp_main;
-	end if;
-    
-    -- insert into location(locationID, city, state, country) values (ip_locationID, null, null, null); -- Check location table
+    if exists (select 1 from location where locationID = ip_locationID) then
+        leave sp_main;
+    end if;
+
     insert into location(locationID) values (ip_locationID);
-    /*
-    "airlineID" varchar(50) NOT NULL,
-	"tail_num" varchar(50) NOT NULL,
-  "seat_capacity" int NOT NULL,
-  "speed" int NOT NULL,
-  "locationID" varchar(50) DEFAULT NULL,
-  "plane_type" varchar(100) DEFAULT NULL,
-  "maintenanced" tinyint(1) DEFAULT NULL,
-  "model" varchar(50) DEFAULT NULL,
-  "neo" tinyint(1) DEFAULT NULL,
-    
-    */
-    insert into airplane(airlineID, tail_num, seat_capacity, speed, locationID, maintenanced, model, neo)
-    values (ip_airlineID, ip_tail_num, ip_seat_capacity, ip_speed, ip_locationID, ip_maintenanced, ip_model, ip_neo);
+    insert into airplane(airlineID, tail_num, seat_capacity, speed, locationID, plane_type, maintenanced, model, neo)
+    values (ip_airlineID, ip_tail_num, ip_seat_capacity, ip_speed, ip_locationID, ip_plane_type, ip_maintenanced, ip_model, ip_neo);
+
 end //
 delimiter ;
 
@@ -671,27 +659,27 @@ drop procedure if exists simulation_cycle;
 delimiter //
 create procedure simulation_cycle ()
 sp_main: begin
-    declare v_flightID varchar(50);
-    declare v_status varchar(10);
-    select flightID, airplane_status into v_flightID, v_status
-    from flight
-    where next_time = (select min(next_time) from flight where airplane_status != 'ended')
-    order by field(airplane_status, 'air', 'ground'), flightID limit 1;
-    if v_status = 'in_flight' then
-        call flight_landing(v_flightID);
-        call passengers_disembark(v_flightID);
-    else
-        call passengers_board(v_flightID);
-        call flight_takeoff(v_flightID);
-    end if;
-    if exists (
-        select 1 from flight
-        where flightID = v_flightID and airplane_status = 'on_ground'
-          and progress = (select max(sequence) from leg where routeID = (select routeID from flight where flightID = v_flightID))
-    ) then
-        call recycle_crew(v_flightID);
-        call retire_flight(v_flightID);
-    end if;
+    -- declare v_flightID varchar(50);
+--     declare v_status varchar(10);
+--     select flightID, airplane_status into v_flightID, v_status
+--     from flight
+--     where next_time = (select min(next_time) from flight where airplane_status != 'ended')
+--     order by field(airplane_status, 'air', 'ground'), flightID limit 1;
+--     if v_status = 'in_flight' then
+--         call flight_landing(v_flightID);
+--         call passengers_disembark(v_flightID);
+--     else
+--         call passengers_board(v_flightID);
+--         call flight_takeoff(v_flightID);
+--     end if;
+--     if exists (
+--         select 1 from flight
+--         where flightID = v_flightID and airplane_status = 'on_ground'
+--           and progress = (select max(sequence) from leg where routeID = (select routeID from flight where flightID = v_flightID))
+--     ) then
+--         call recycle_crew(v_flightID);
+--         call retire_flight(v_flightID);
+--     end if;
 end //
 delimiter ;
 
