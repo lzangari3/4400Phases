@@ -88,8 +88,7 @@ create procedure add_airport (
     in ip_city varchar(100), in ip_state varchar(100), in ip_country char(3), in ip_locationID varchar(50)
 )
 sp_main: begin
-    if ip_airportID is null or ip_locationID is null or ip_airport_name is null
-		or ip_city is null or ip_state is null or ip_country is null then
+    if ip_airportID is null or ip_locationID is null or ip_city is null or ip_state is null or ip_country is null then
         leave sp_main;
     end if;
     if exists (select 1 from airport where airportID = ip_airportID) then -- leave if airportID in use
@@ -222,7 +221,7 @@ sp_main: begin
     
     if ip_support_airline is not null and ip_support_tail is not null then -- we have a plane to assign
         if exists (select 1 from flight where support_airline = ip_support_airline 
-			and support_tail = ip_support_tail and airplane_status != 'on_ground') then
+			and support_tail = ip_support_tail) then
             leave sp_main; -- leave if associated plane is still active
         end if;
         if not exists (select 1 from airplane where airlineID = ip_support_airline and 
