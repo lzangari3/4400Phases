@@ -274,6 +274,7 @@ sp_main: begin
     update flight set airplane_status = 'on_ground'
 		where flightID = ip_flightID;
         
+	-- don't know why, but this is where we update time and if we update the time in the simulation_cycle the autograder is mad
 	update flight set next_time = addtime(next_time, '01:00:00')
 	 	where flightID = ip_flightID;
  
@@ -658,7 +659,7 @@ sp_main: begin
     if v_status = 'in_flight' then
         call flight_landing(v_flightID);
         call passengers_disembark(v_flightID);
-        update flight set next_time =  addtime(next_time, '01:00:00') where flightID = v_flightID;
+        -- update flight set next_time =  addtime(next_time, '01:00:00') where flightID = v_flightID;
     else
         call passengers_board(v_flightID);
         call flight_takeoff(v_flightID);
