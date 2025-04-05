@@ -589,7 +589,7 @@ sp_main: begin
 	end if;
     
     -- we now store the location of the airplane
-    select locationID into flight_location from flight f join airplane a on
+    select a.locationID into flight_location from flight f join airplane a on
 		f.support_airline = a.airlineID and f.support_tail = a.tail_num join location l on 
         a.locationID = l.locationID where f.flightID = ip_flightID;
         
@@ -601,13 +601,13 @@ sp_main: begin
 	end if;
         
 	-- now we go through the pilot table and free pilots from this flight. 
-    update pilot set commanding_flight = null where personID in 
-		(select personID from pilot where commanding_flight = ip_flightID);
+    update pilot p join flight f on p.commanding_flight = f.flightID
+		set commanding_flight = null where ip_flightID = p.commanding_flight;
         
 	-- we need to store the location of the airport the plane just got to
     select arrival into airport_location from flight f join route_path rp on
 		f.routeID = rp.routeID join leg le on le.legID = rp.legID where
-		rp.sequence = (select progress from flight where flightID = ip_flightID);
+		rp.sequence = f.progress and f.flightID = ip_flightID;
         
     -- we also need to update the location values for recycled crew
     update person set locationID = airport_location where personID in 
@@ -634,7 +634,7 @@ sp_main: begin
 	end if;
     
     -- set the flight location (from the airplane)
-    select locationID into flight_location from flight f join airplane a on
+    select a.locationID into flight_location from flight f join airplane a on
 		f.support_airline = a.airlineID and f.support_tail = a.tail_num join location l on 
         a.locationID = l.locationID where f.flightID = ip_flightID;
         
