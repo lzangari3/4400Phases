@@ -390,7 +390,7 @@ sp_main: begin
     group by pa.personID
     limit v_capacity;
 
-    -- Move selected passengers to plane and deduct ticket cost
+    -- Move selected passengers to plane and deduct ticket cost.
     update person p
     join eligible_boarding eb on p.personID = eb.personID
     set p.locationID = v_location;
