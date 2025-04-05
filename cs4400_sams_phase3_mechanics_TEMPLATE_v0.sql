@@ -384,7 +384,7 @@ sp_main: begin
     end if;
     
     -- Check if there is a grounded flight with the inputted flightID
-    if not exists (select 1 from flight where flightID = ip_flightID and status = 'on_ground') then
+    if not exists (select 1 from flight where flightID = ip_flightID and airplane_status = 'on_ground') then
         leave sp_main;
     end if;
 
@@ -424,35 +424,36 @@ sp_main: begin
 
 
     
-    select support_tail, support_airline, cost into v_tail, v_airline, v_cost from flight where flightID = ip_flightID;
-    select locationID, seat_cap into v_loc, v_cap from airplane where airlineID = v_airline and tail_num = v_tail;
+   --  select support_tail, support_airline, cost into v_tail, v_airline, v_cost from flight where flightID = ip_flightID;
+--     select locationID, seat_cap into v_loc, v_cap from airplane where airlineID = v_airline and tail_num = v_tail;
     
-    -- Stuff from the original Main
-    
-	declare v_tail varchar(50);
-    declare v_airline varchar(50);
-    declare v_loc varchar(50);
-    declare v_cost int;
-    declare v_cap int;
-    if ip_flightID is null then leave sp_main; end if;
-    if not exists (select 1 from flight where flightID = ip_flightID and status = 'on_ground') then
-        leave sp_main;
-    end if;
-    select support_tail, support_airline, cost into v_tail, v_airline, v_cost
-		from flight where flightID = ip_flightID;
-    select locationID, seat_cap into v_loc, v_cap from airplane
-		where airlineID = v_airline and tail_num = v_tail;
-    
-    -- end stuff from original Main
-    
-    insert into passenger(flightID, personID)
-    select ip_flightID, personID from person
-    where locationID = v_loc and funds >= v_cost
-    and personID not in (select personID from passenger)
-    limit v_cap;
-    
-    update person set funds = funds - v_cost
-    where personID in (select personID from passenger where flightID = ip_flightID);
+--     -- Stuff from the original Main
+--     
+-- 	declare v_tail varchar(50);
+--     declare v_airline varchar(50);
+--     declare v_loc varchar(50);
+--     declare v_cost int;
+--     declare v_cap int;
+--     if ip_flightID is null then leave sp_main; end if;
+--     if not exists (select 1 from flight where flightID = ip_flightID and status = 'on_ground') then
+--         leave sp_main;
+--     end if;
+--     select support_tail, support_airline, cost into v_tail, v_airline, v_cost
+-- 		from flight where flightID = ip_flightID;
+--     select locationID, seat_cap into v_loc, v_cap from airplane
+-- 		where airlineID = v_airline and tail_num = v_tail;
+--     
+--     -- end stuff from original Main
+--     
+--     insert into passenger(flightID, personID)
+--     select ip_flightID, personID from person
+--     where locationID = v_loc and funds >= v_cost
+--     and personID not in (select personID from passenger)
+--     limit v_cap;
+--     
+--     update person set funds = funds - v_cost
+--     where personID in (select personID from passenger where flightID = ip_flightID);
+
 end //
 delimiter ;
 
@@ -473,7 +474,7 @@ sp_main: begin
     end if;
     
     -- Check if there is a grounded flight with the inputted flightID
-    if not exists (select 1 from flight where flightID = ip_flightID and status = 'on_ground') then
+    if not exists (select 1 from flight where flightID = ip_flightID and airplane_status = 'on_ground') then
         leave sp_main;
     end if; 
 
@@ -485,10 +486,18 @@ sp_main: begin
     select locationID into arr_loc from airport where airport.airportID = arr_airport;
     
     -- Updating the locationID of any passengers who are on the plane and have reached their destination 
-    update person set locationID = arr_loc where personID in 
-		(select * from (passenger left join person on passenger.personID = person.personID join passenger_vacations on passenger.personID = passenger_vacations.personID) 
-		join (airplane join flight on airplane.tail_num = flight.support_tail) on airplane.locationID = person.locationID
-		where flight.flightID = ip_flightID and passenger_vacations.airportID = arr_airport);
+    -- update person set locationID = arr_loc where personID in 
+-- 		(select passenger.personID from (person right join passenger on passenger.personID = person.personID
+--         join passenger_vacations on passenger.personID = passenger_vacations.personID) 
+-- 		join (airplane join flight on airplane.tail_num = flight.support_tail)
+--         on airplane.locationID = person.locationID
+-- 		where flight.flightID = ip_flightID and passenger_vacations.airportID = arr_airport);
+
+	update person join passenger on person.personID = passenger.personID join passenger_vacations pv on 
+		passenger.personID = pv.personID join (airplane join flight on airplane.tail_num = flight.support_tail)
+        on airplane.locationID = person.locationID
+        set person.locationID = arr_loc 
+        where flight.flightID = ip_flightID and pv.airportID = arr_airport;
     
 end //
 delimiter ;
