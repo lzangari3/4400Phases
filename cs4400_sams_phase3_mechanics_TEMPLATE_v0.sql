@@ -262,27 +262,37 @@ drop procedure if exists flight_landing;
 delimiter //
 create procedure flight_landing (in ip_flightID varchar(50))
 sp_main: begin
-	declare curr_progress int;
-    declare curr_routeID varchar(50);
-
+	-- declare curr_progress int;
+    -- declare curr_routeID varchar(50);
+    declare plane_loc varchar(50);
+ 
     if ip_flightID is null then leave sp_main; end if;
     if not exists (select 1 from flight where flightID = ip_flightID and airplane_status = 'in_flight') then
         leave sp_main;
     end if;
-
-    update flight set airplane_status = 'on_ground', next_time = addtime(next_time, '01:00:00'), progress = progress + 1
-    where flightID = ip_flightID;
-
-    select progress into curr_progress from flight where flightID = ip_flightID;
-    select routeID into curr_routeID from flight where flightID = ip_flightID;
-
-    update pilot set experience = experience + 1 where commanding_flight = ip_flightID;
-
-    update passenger set miles = miles + (
-        select distance from route_path rp
+ 
+    update flight set airplane_status = 'on_ground'
+		where flightID = ip_flightID;
+        
+	update flight set next_time = addtime(next_time, '01:00:00')
+	 	where flightID = ip_flightID;
+ 
+    -- select progress into curr_progress from flight where flightID = ip_flightID;
+    -- select routeID into curr_routeID from flight where flightID = ip_flightID;
+	select locationID into plane_loc from flight f join airplane a on f.support_tail = a.tail_num and f.support_airline = a.airlineID
+		where f.flightID = ip_flightID;
+ 
+	-- maybe add location info later
+    update pilot pl join person p on pl.personID = p.personID
+		set pl.experience = pl.experience + 1 
+        where commanding_flight = ip_flightID;
+        
+    update passenger pp join person p on pp.personID = p.personID 
+    set miles = miles + (
+        select l.distance from flight f join route_path rp on f.routeID = rp.routeID and f.progress = rp.sequence
         join leg l on rp.legID = l.legID
-        where rp.routeID = curr_routeID and rp.sequence = curr_progress
-        limit 1);
+        where f.flightID = ip_flightID) 
+	where p.locationID = plane_loc;
 end //
 delimiter ;
 
@@ -294,7 +304,7 @@ drop procedure if exists flight_takeoff;
 delimiter //
 create procedure flight_takeoff (in ip_flightID varchar(50))
 sp_main: begin
-        declare v_speed int;
+	declare v_speed int;
     declare v_distance int;
     declare v_duration time;
     declare plane_type varchar(100);
@@ -309,26 +319,27 @@ sp_main: begin
     on f.support_airline = a.airlineID and f.support_tail = a.tail_num
     where f.flightID = ip_flightID;
 
-    if (select count(*) from pilot where commanding_flight = ip_flightID) < 1 then
-        update flight set next_time = addtime(next_time, '00:30:00') where flightID = ip_flightID;
-        leave sp_main;
-    end if;
-
     if plane_type = 'Boeing' and (select count(*) from pilot where commanding_flight = ip_flightID) < 2 then
         update flight set next_time = addtime(next_time, '00:30:00') where flightID = ip_flightID;
         leave sp_main;
+	elseif (select count(*) from pilot where commanding_flight = ip_flightID) < 1 then
+        update flight set next_time = addtime(next_time, '00:30:00') where flightID = ip_flightID;
+        leave sp_main;
     end if;
 
-    select speed into v_speed from airplane where airlineID = (select support_airline from flight where flightID = ip_flightID)
-        and tail_num = (select support_tail from flight where flightID = ip_flightID);
+    select speed into v_speed from airplane a join flight f on a.airlineID = f.support_airline and a.tail_num = f.support_tail
+		where f.flightID = ip_flightID;
 
     select distance into v_distance from leg l join route_path rp on l.legID = rp.legID
-    where rp.routeID = (select routeID from flight where flightID = ip_flightID)
-    and sequence = (select progress from flight where flightID = ip_flightID) + 1;
+		join flight f on rp.routeID = f.routeID and f.progress + 1 = rp.sequence
+		where f.flightID = ip_flightID;
 
     set v_duration = leg_time(v_distance, v_speed);
     update flight set airplane_status = 'in_flight', next_time = addtime(next_time, v_duration)
         where flightID = ip_flightID;
+	
+    update flight set progress = progress + 1
+		where flightID = ip_flightID;
 end //
 delimiter ;
 -- [8] passengers_board()
@@ -490,9 +501,14 @@ sp_main: begin
     
     
     -- if we have a pilot, we have to check that they can pilot the aircraft
-    if v_model not in (select license from pilot_licenses where personID = ip_personID)
-	and ('general' not in (select license from pilot_licenses where personID = ip_personID)) then
-		leave sp_main;
+    if v_model = 'Airbus' or v_model = 'Boeing' then
+		if v_model not in (select license from pilot_licenses where personID = ip_personID) then
+			leave sp_main;
+		end if;
+	else
+		if ('general' not in (select license from pilot_licenses where personID = ip_personID)) then
+			leave sp_main;
+		end if;
 	end if;
     
     -- if we make it here, out pilot is good to pilot the aircraft and the plane is grounded
@@ -501,13 +517,16 @@ sp_main: begin
     -- big check: we need to ensure this pilot is at the same spot as the plane
     -- 1st we see the location of the plane
     select airport.locationID into curr_airport_location from flight f join
-    route_path rp on f.routeID = rp.routeID join leg l on 
-	l.legID = rp.legID join airport on airport.airportID = l.arrival
-    where f.flightID = ip_flightID and rp.sequence = f.progress;
+    route_path rp on f.routeID = rp.routeID and rp.sequence = f.progress + 1 
+    join leg l on l.legID = rp.legID 
+    join airport on airport.airportID = l.departure
+    where f.flightID = ip_flightID;
     
-    if v_loc != curr_airport_location then leave sp_main; end if; -- we leave if plane and pilot aren't together
+    -- if v_loc != curr_airport_location then leave sp_main; end if; -- we leave if pilot is not in the right airport aren't together
+	if (select p.locationID from person p where p.personID = ip_personID) != curr_airport_location then leave sp_main; end if;
     
     update person set locationID = v_loc where personID = ip_personID;
+    update pilot set commanding_flight = ip_flightID where personID = ip_personID;
 end //
 delimiter ;
 
@@ -545,19 +564,30 @@ sp_main: begin
         > 0 then
 			leave sp_main; -- leave because passengers are still there
 	end if;
-        
-	-- now we go through the pilot table and free pilots from this flight. 
-    update pilot p join flight f on p.commanding_flight = f.flightID
-		set commanding_flight = null where ip_flightID = p.commanding_flight;
-        
-	-- we need to store the location of the airport the plane just got to
-    select arrival into airport_location from flight f join route_path rp on
-		f.routeID = rp.routeID join leg le on le.legID = rp.legID where
-		rp.sequence = f.progress and f.flightID = ip_flightID;
+    
+    -- checking if the flight has ended (we reached the last leg)
+    if (select MAX(rp.sequence) from route_path rp 
+			join flight f on rp.routeID = f.routeID
+			where f.flightID = ip_flightID
+            group by f.flightID) != (select f.progress from flight f where f.flightID = ip_flightID) then
+		leave sp_main;
+    end if;
+    
+    -- we need to store the location of the airport the plane just got to
+    select a.locationID into airport_location from flight f 
+		join route_path rp on f.routeID = rp.routeID and rp.sequence = f.progress 
+        join leg le on le.legID = rp.legID 
+        join airport a on a.airportID = le.arrival where
+		f.flightID = ip_flightID;
         
     -- we also need to update the location values for recycled crew
     update person set locationID = airport_location where personID in 
 		(select personID from pilot where commanding_flight = ip_flightID);
+    
+	-- now we go through the pilot table and free pilots from this flight.
+    update pilot p join flight f on p.commanding_flight = f.flightID
+		set commanding_flight = null where ip_flightID = p.commanding_flight;
+        
     
 end //
 delimiter ;
