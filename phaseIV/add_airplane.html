@@ -98,10 +98,12 @@
   </form>
 
   <script>
-    document.getElementById('addAirplaneForm').addEventListener('submit', function(event) {
-      event.preventDefault();
-      // Here you could send the form data via AJAX / fetch to your backend.
-      alert('Add Airplane submitted!');
+    document.getElementById('addAirplaneForm')
+      .addEventListener('submit', function(event) {
+        event.preventDefault();
+        // TODO: do your AJAX / form‑processing here…
+        // then redirect:
+        window.location.href = 'home.html';
     });
   </script>
 </body>
