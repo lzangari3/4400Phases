@@ -1,0 +1,23 @@
+# Ignore virtual environment
+venv/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variable/config files (if used)
+.env
+
+# Flask-related
+instance/
+*.db
+*.sqlite
+
+# Logs and system files
+*.log
+.DS_Store
+Thumbs.db
+
+# VSCode settings (optional, if you don’t want to share them)
+.vscode/

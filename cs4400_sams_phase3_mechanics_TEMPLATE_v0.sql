@@ -276,7 +276,7 @@ sp_main: begin
         
 	-- don't know why, but this is where we update time and if we update the time in the simulation_cycle the autograder is mad
 	update flight set next_time = addtime(next_time, '01:00:00')
-	 	where flightID = ip_flightID;
+		where flightID = ip_flightID;
  
     -- select progress into curr_progress from flight where flightID = ip_flightID;
     -- select routeID into curr_routeID from flight where flightID = ip_flightID;
