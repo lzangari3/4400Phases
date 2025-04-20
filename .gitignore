@@ -15,6 +15,9 @@ instance/
 # Log files
 *.log
 
+# Secret environment files
+phaseIV/.env
+
 # VS Code and OS system files
 .vscode/
 .DS_Store
