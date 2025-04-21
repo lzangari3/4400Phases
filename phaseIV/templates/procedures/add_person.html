@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Procedure: Add Airplane</title>
+  <title>Procedure: Add Person</title>
   <style>
     body {
       font-family: sans-serif;
@@ -51,61 +51,53 @@
   </style>
 </head>
 <body>
-  <h1>Procedure: Add Airplane</h1>
-  <form id="addAirplaneForm">
+  <h1>Procedure: Add Person</h1>
+  <form id="add_personForm">
     <div>
-      <label for="speed">Speed</label>
-      <input type="number" id="speed" name="speed" placeholder="e.g., 345">
+      <label for="locationId">Locationid</label>
+      <input type="text" id="locationId" name="locationId" placeholder="Enter locationId">
     </div>
     <div>
-      <label for="maintained">Maintained</label>
-      <input type="date" id="maintained" name="maintained">
+      <label for="miles">Miles</label>
+      <input type="number" id="miles" name="miles" placeholder="Enter miles">
     </div>
     <div>
-      <label for="airlineId">Airline ID</label>
-      <input type="text" id="airlineId" name="airlineId" placeholder="e.g., United">
+      <label for="personId">Personid</label>
+      <input type="text" id="personId" name="personId" placeholder="Enter personId">
     </div>
     <div>
-      <label>
-        <input type="checkbox" id="neo" name="neo">
-        Neo
-      </label>
+      <label for="firstName">Firstname</label>
+      <input type="text" id="firstName" name="firstName" placeholder="Enter firstName">
     </div>
     <div>
-      <label for="tailNum">Tail Num</label>
-      <input type="text" id="tailNum" name="tailNum" placeholder="e.g., nk780b">
+      <label for="taxId">Taxid</label>
+      <input type="text" id="taxId" name="taxId" placeholder="Enter taxId">
     </div>
     <div>
-      <label for="locationId">Location ID</label>
-      <input type="text" id="locationId" name="locationId" placeholder="e.g., port_190">
+      <label for="funds">Funds</label>
+      <input type="number" id="funds" name="funds" placeholder="Enter funds">
     </div>
     <div>
-      <label for="model">Model</label>
-      <input type="text" id="model" name="model" placeholder="e.g., A320">
+      <label for="lastName">Lastname</label>
+      <input type="text" id="lastName" name="lastName" placeholder="Enter lastName">
     </div>
     <div>
-      <label for="seatCap">Seat Cap</label>
-      <input type="number" id="seatCap" name="seatCap" placeholder="e.g., 120">
-    </div>
-    <div>
-      <label for="planeType">Plane Type</label>
-      <input type="text" id="planeType" name="planeType" placeholder="e.g., Airbus">
+      <label for="experience">Experience</label>
+      <input type="number" id="experience" name="experience" placeholder="Enter experience">
     </div>
     <div class="buttons">
-      <button type="reset">Cancel</button>
+      <!-- The red underline should not be a problem when the app is run -->
+      <button type="button" onclick="window.location.href='{{ url_for('index') }}'">Cancel</button>
       <button type="submit">Add</button>
     </div>
   </form>
-
   <script>
-    document.getElementById('addAirplaneForm')
+    document.getElementById('add_personForm')
       .addEventListener('submit', function(event) {
         event.preventDefault();
-        // TODO: do your AJAX / form‑processing here…
-        // then redirect:
+        // TODO: Add fetch() logic here
         window.location.href = 'home.html';
     });
   </script>
 </body>
 </html>
-
