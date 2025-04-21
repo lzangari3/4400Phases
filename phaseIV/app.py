@@ -70,7 +70,7 @@ def retire_flight():
     return render_template("procedures/retire_flight.html")
 
 # simulation cycle Form
-@app.route("/simulation cycle")
+@app.route("/simulation cycle") 
 def simulation_cycle():
     return render_template("procedures/simulation_cycle.html")
 
@@ -184,6 +184,141 @@ def flights_in_air():
     cursor = conn.cursor()
     try:
         cursor.execute("SELECT * FROM flights_in_the_air")  
+        columns = [desc[0] for desc in cursor.description]
+        rows = cursor.fetchall()
+
+        # Convert to serializable dicts
+        serialized = []
+        for row in rows:
+            row_dict = {}
+            for col, val in zip(columns, row):
+                # Convert timedelta and datetime to strings
+                if isinstance(val, (timedelta, datetime)):
+                    row_dict[col] = str(val)
+                else:
+                    row_dict[col] = val
+            serialized.append(row_dict)
+    except Exception as e:
+        return f"<h2>Failed to fetch view:</h2><pre>{e}</pre>"
+    finally:
+        conn.close()
+
+    return jsonify(serialized)
+
+@app.route('/view/flights-on-ground')
+def flights_on_the_ground():
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT * FROM flights_on_the_ground")  
+        columns = [desc[0] for desc in cursor.description]
+        rows = cursor.fetchall()
+
+        # Convert to serializable dicts
+        serialized = []
+        for row in rows:
+            row_dict = {}
+            for col, val in zip(columns, row):
+                # Convert timedelta and datetime to strings
+                if isinstance(val, (timedelta, datetime)):
+                    row_dict[col] = str(val)
+                else:
+                    row_dict[col] = val
+            serialized.append(row_dict)
+    except Exception as e:
+        return f"<h2>Failed to fetch view:</h2><pre>{e}</pre>"
+    finally:
+        conn.close()
+
+    return jsonify(serialized)
+
+@app.route('/view/people-in-air')
+def people_in_the_air():
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT * FROM people_in_the_air")  
+        columns = [desc[0] for desc in cursor.description]
+        rows = cursor.fetchall()
+
+        # Convert to serializable dicts
+        serialized = []
+        for row in rows:
+            row_dict = {}
+            for col, val in zip(columns, row):
+                # Convert timedelta and datetime to strings
+                if isinstance(val, (timedelta, datetime)):
+                    row_dict[col] = str(val)
+                else:
+                    row_dict[col] = val
+            serialized.append(row_dict)
+    except Exception as e:
+        return f"<h2>Failed to fetch view:</h2><pre>{e}</pre>"
+    finally:
+        conn.close()
+
+    return jsonify(serialized)
+
+@app.route('/view/people-on-ground')
+def people_on_the_ground():
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT * FROM people_on_the_ground")  
+        columns = [desc[0] for desc in cursor.description]
+        rows = cursor.fetchall()
+
+        # Convert to serializable dicts
+        serialized = []
+        for row in rows:
+            row_dict = {}
+            for col, val in zip(columns, row):
+                # Convert timedelta and datetime to strings
+                if isinstance(val, (timedelta, datetime)):
+                    row_dict[col] = str(val)
+                else:
+                    row_dict[col] = val
+            serialized.append(row_dict)
+    except Exception as e:
+        return f"<h2>Failed to fetch view:</h2><pre>{e}</pre>"
+    finally:
+        conn.close()
+
+    return jsonify(serialized)
+
+@app.route('/view/route-summary')
+def route_summary():
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT * FROM route_summary")  
+        columns = [desc[0] for desc in cursor.description]
+        rows = cursor.fetchall()
+
+        # Convert to serializable dicts
+        serialized = []
+        for row in rows:
+            row_dict = {}
+            for col, val in zip(columns, row):
+                # Convert timedelta and datetime to strings
+                if isinstance(val, (timedelta, datetime)):
+                    row_dict[col] = str(val)
+                else:
+                    row_dict[col] = val
+            serialized.append(row_dict)
+    except Exception as e:
+        return f"<h2>Failed to fetch view:</h2><pre>{e}</pre>"
+    finally:
+        conn.close()
+
+    return jsonify(serialized)
+
+@app.route('/view/alternative-airports')
+def alternative_airports():
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT * FROM alternative_airports")  
         columns = [desc[0] for desc in cursor.description]
         rows = cursor.fetchall()
 
