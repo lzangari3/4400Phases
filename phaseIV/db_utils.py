@@ -24,3 +24,14 @@ def query_view(view_name):
         conn.close()
 
     return jsonify(serialized)
+
+
+# This is for calling procedures
+def call_procedure(proc_name, args):
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.callproc(proc_name, args)
+        conn.commit()
+    finally:
+        conn.close()

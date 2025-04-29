@@ -1,5 +1,5 @@
-from flask import Flask, render_template
-from db_utils import query_view
+from flask import Flask, render_template, request, redirect, url_for
+from db_utils import query_view, call_procedure
 import os
 
 app = Flask(__name__)
@@ -32,93 +32,204 @@ def render_static_page(page_name):
 ### 
 
 # Add Airplane Procedure
-@app.route("/add airplane", methods=['POST'])
+@app.route("/submit_add_airplane", methods=['POST'])
 def submit_add_airplane():
+    try:
+        speed = request.form['speed']
+        maintained = request.form['maintained'] or None
+        airlineId = request.form['airlineId']
+        neo = 1 if 'neo' in request.form else 0
+        tailNum = request.form['tailNum']
+        locationId = request.form['locationId']
+        model = request.form['model'] or None
+        seatCap = request.form['seatCap']
+        planeType = request.form['planeType']
 
-    ## All of the parameters to the procedure
-    #speed = request.form['speed']
-    #maintained = request.form['maintained']
-    #airlineId = request.form['airlineId']
-    #neo = request.form['neo']
-    #tailNum = request.form['tailNum']
-    #locationId = request.form['locationId']
-    #model = request.form['model']   
-    #seatCap = request.form['seatCap']
-    #planeType = request.form['planeType'] 
+        call_procedure('add_airplane', [
+            speed, maintained, airlineId, neo,
+            tailNum, locationId, model, seatCap, planeType
+        ])
 
-    ## This needs to be configured to the database
-    #conn = get_connection()
-    #cursor = conn.cursor()
-    #try:
-        #cursor.callproc('add_person', [
-            #speed, maintained, airlineId, neo, 
-            #tailNum, locationId, model, seatCap, planeType
-        #])
+        return redirect(url_for('../index.html'))
 
-        #conn.commit()
-    #except mysql.connector.Error as e:
-        #return f"Database error: {e}"
-    #finally:
-        #conn.close()
-
-    #return redirect(url_for('index'))
-
-    pass
+    except Exception as e:
+        return render_template('procedures/add_airplane.html', error=str(e))
 
 # Add Person Procedure
-@app.route("/add person", methods=['POST'])
+@app.route("/submit_add_person", methods=['POST'])
 def submit_add_person():
-    pass
+    try:
+        # Read form fields exactly as named
+        locationId = request.form['locationId']
+        miles = request.form['miles']
+        personId = request.form['personId']
+        firstName = request.form['firstName']
+        taxId = request.form['taxId']
+        funds = request.form['funds']
+        lastName = request.form['lastName']
+        experience = request.form['experience']
+
+        # Call your stored procedure
+        call_procedure('add_person', [
+            locationId, miles, personId, firstName,
+            taxId, funds, lastName, experience
+        ])
+
+        # Redirect to home page after successful submit
+        return redirect(url_for('../index.html'))
+
+    except Exception as e:
+        # If an error happens, show the error on the form page
+        return render_template('procedures/add_person.html', error=str(e))
 
 # Assign Pilot Procedure
-@app.route("/assign Pilot", methods=['POST'])
+@app.route("/submit_assign_pilot", methods=['POST'])
 def submit_assign_pilot():
-    pass
+    try:
+        personId = request.form['personId']
+        pilotType = request.form['pilotType']
+        certificationLevel = request.form['certificationLevel']
+        certificationExpiration = request.form['certificationExpiration']
+
+        call_procedure('assign_pilot', [
+            personId, pilotType, certificationLevel, certificationExpiration
+        ])
+
+        return redirect(url_for('../index.html'))
+    except Exception as e:
+        return render_template('procedures/assign_pilot.html', error=str(e))
 
 # Flight Landing Procedure
-@app.route("/flight landing", methods=['POST'])
+@app.route("/submit_flight_landing", methods=['POST'])
 def submit_flight_landing():
-    pass
+    try:
+        flightId = request.form['flightId']
+        arrivingAirportId = request.form['arrivingAirportId']
+
+        call_procedure('flight_landing', [
+            flightId, arrivingAirportId
+        ])
+
+        return redirect(url_for('../index.html'))
+    except Exception as e:
+        return render_template('procedures/flight_landing.html', error=str(e))
 
 # Flight Takeoff Procedure
-@app.route("/flight takeoff", methods=['POST'])
+@app.route("/submit_flight_takeoff", methods=['POST'])
 def submit_flight_takeoff():
-    pass
+    try:
+        flightId = request.form['flightId']
+        departingAirportId = request.form['departingAirportId']
+
+        call_procedure('flight_takeoff', [
+            flightId, departingAirportId
+        ])
+
+        return redirect(url_for('../index.html'))
+    except Exception as e:
+        return render_template('procedures/flight_takeoff.html', error=str(e))
 
 # Grant or revoke pilot license Procedure
-@app.route("/grant or revoke pilot license", methods=['POST'])
+@app.route("/submit_grant_revoke_pilot", methods=['POST'])
 def submit_grant_revoke_pilot():
-    pass
+    try:
+        personId = request.form['personId']
+        grantOrRevoke = request.form['grantOrRevoke']
+
+        call_procedure('grant_or_revoke_pilot_license', [
+            personId, grantOrRevoke
+        ])
+
+        return redirect(url_for('../index.html'))
+    except Exception as e:
+        return render_template('procedures/grant_or_revoke_pilot_license.html', error=str(e))
 
 # offer flight Procedure
-@app.route("/offer flight", methods=['POST'])
+@app.route("/submit_offer_flight", methods=['POST'])
 def submit_offer_flight():
-    pass
+    try:
+        airlineId = request.form['airlineId']
+        flightNumber = request.form['flightNumber']
+        departureLocationId = request.form['departureLocationId']
+        arrivalLocationId = request.form['arrivalLocationId']
+        scheduledDepartureTime = request.form['scheduledDepartureTime']
+        scheduledArrivalTime = request.form['scheduledArrivalTime']
+        flightDurationMinutes = request.form['flightDurationMinutes']
+        flightStatus = request.form['flightStatus']
+        seatPrice = request.form['seatPrice']
+
+        call_procedure('offer_flight', [
+            airlineId, flightNumber, departureLocationId, arrivalLocationId,
+            scheduledDepartureTime, scheduledArrivalTime,
+            flightDurationMinutes, flightStatus, seatPrice
+        ])
+
+        return redirect(url_for('../index.html'))
+    except Exception as e:
+        return render_template('procedures/offer_flight.html', error=str(e))
 
 # passengers board Procedure
-@app.route("/passengers board", methods=['POST'])
+@app.route("/submit_passengers_board", methods=['POST'])
 def submit_passengers_board():
-    pass
+    try:
+        flightId = request.form['flightId']
+        passengerId = request.form['passengerId']
+
+        call_procedure('passengers_board', [
+            flightId, passengerId
+        ])
+
+        return redirect(url_for('../index.html'))
+    except Exception as e:
+        return render_template('procedures/passengers_board.html', error=str(e))
 
 # passengers disembark Procedure
-@app.route("/passengers disembark", methods=['POST'])
+@app.route("/submit_passengers_disembark", methods=['POST'])
 def submit_passengers_disembark():
-    pass
+    try:
+        flightId = request.form['flightId']
+        passengerId = request.form['passengerId']
+
+        call_procedure('passengers_disembark', [
+            flightId, passengerId
+        ])
+
+        return redirect(url_for('../index.html'))
+    except Exception as e:
+        return render_template('procedures/passengers_disembark.html', error=str(e))
 
 # recycle crew Procedure
-@app.route("/recycle crew", methods=['POST'])
+@app.route("/submit_recycle_crew", methods=['POST'])
 def submit_recycle_crew():
-    pass
+    try:
+        flightId = request.form['flightId']
+
+        call_procedure('recycle_crew', [flightId])
+
+        return redirect(url_for('index'))
+    except Exception as e:
+        return render_template('procedures/recycle_crew.html', error=str(e))
 
 # retire flight Procedure
-@app.route("/retire flight", methods=['POST'])
+@app.route("/submit_retire_flight", methods=['POST'])
 def submit_retire_flight():
-    pass
+    try:
+        flightId = request.form['flightId']
+
+        call_procedure('retire_flight', [flightId])
+
+        return redirect(url_for('../index.html'))
+    except Exception as e:
+        return render_template('procedures/retire_flight.html', error=str(e))
 
 # simulation cycle Procedure
-@app.route("/simulation cycle", methods=['POST'])
+@app.route("/submit_simulation_cycle", methods=['POST'])
 def submit_simulation_cycle():
-    pass
+    try:
+        call_procedure('simulation_cycle', [])
+        return redirect(url_for('../index.html'))
+    except Exception as e:
+        return render_template('procedures/simulation_cycle.html', error=str(e))
 
 ### 
 # 

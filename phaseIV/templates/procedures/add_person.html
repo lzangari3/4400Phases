@@ -52,7 +52,7 @@
 </head>
 <body>
   <h1>Procedure: Add Person</h1>
-  <form id="add_personForm">
+  <form id="add_personForm" action="{{ url_for('submit_add_person') }}" method="POST">
     <div>
       <label for="locationId">Locationid</label>
       <input type="text" id="locationId" name="locationId" placeholder="Enter locationId">
@@ -91,13 +91,5 @@
       <button type="submit">Add</button>
     </div>
   </form>
-  <script>
-    document.getElementById('add_personForm')
-      .addEventListener('submit', function(event) {
-        event.preventDefault();
-        // TODO: Add fetch() logic here
-        window.location.href = 'home.html';
-    });
-  </script>
 </body>
 </html>
