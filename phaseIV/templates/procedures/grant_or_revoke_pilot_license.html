@@ -52,7 +52,7 @@
 </head>
 <body>
   <h1>Procedure: Grant Or Revoke Pilot License</h1>
-  <form id="grant_or_revoke_pilot_licenseForm">
+  <form id="grant_or_revoke_pilot_licenseForm" action="{{ url_for('submit_grant_revoke_pilot') }}" method="POST">
     <div>
       <label for="license">License</label>
       <input type="text" id="license" name="license" placeholder="Enter license">
@@ -68,13 +68,5 @@
       <button type="submit">Add/Revoke</button>
     </div>
   </form>
-  <script>
-    document.getElementById('grant_or_revoke_pilot_licenseForm')
-      .addEventListener('submit', function(event) {
-        event.preventDefault();
-        // TODO: Add fetch() logic here
-        window.location.href = 'home.html';
-    });
-  </script>
 </body>
 </html>

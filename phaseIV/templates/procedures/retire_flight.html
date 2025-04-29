@@ -52,7 +52,7 @@
 </head>
 <body>
   <h1>Procedure: Retire Flight</h1>
-  <form id="retire_flightForm">
+  <form id="retire_flightForm" action="{{ url_for('submit_retire_flight') }}" method="POST">
     <div>
       <label for="flightId">Flightid</label>
       <input type="text" id="flightId" name="flightId" placeholder="Enter flightId">
@@ -63,13 +63,5 @@
       <button type="submit">Submit</button>
     </div>
   </form>
-  <script>
-    document.getElementById('retire_flightForm')
-      .addEventListener('submit', function(event) {
-        event.preventDefault();
-        // TODO: Add fetch() logic here
-        window.location.href = 'home.html';
-    });
-  </script>
 </body>
 </html>

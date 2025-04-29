@@ -785,7 +785,7 @@ select
     COUNT(distinct pp.personID) as num_pilots,
     COUNT(distinct ppp.personID) as num_passengers,
     COUNT(distinct p.personID) as joint_pilots_passengers,
-    GROUP_CONCAT(distinct p.personID SEPARATOR ',')
+    GROUP_CONCAT(distinct p.personID SEPARATOR ',') as person_list
 from person p
 join airport a on p.locationID = a.locationID
 left join pilot pp on pp.personID = p.personID

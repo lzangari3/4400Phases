@@ -52,7 +52,7 @@
 </head>
 <body>
   <h1>Procedure: Assign Pilot</h1>
-  <form id="assign_pilotForm">
+  <form id="assign_pilotForm" action="{{ url_for('submit_assign_pilot') }}" method="POST">
     <div>
       <label for="flightId">Flightid</label>
       <input type="text" id="flightId" name="flightId" placeholder="Enter flightId">
@@ -67,13 +67,5 @@
       <button type="submit">Assign</button>
     </div>
   </form>
-  <script>
-    document.getElementById('assign_pilotForm')
-      .addEventListener('submit', function(event) {
-        event.preventDefault();
-        // TODO: Add fetch() logic here
-        window.location.href = 'home.html';
-    });
-  </script>
 </body>
 </html>

@@ -2,67 +2,77 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Home</title>
+  <title>Airline Management Dashboard</title>
   <style>
     body {
       font-family: sans-serif;
-      background-color: #f8f9fa;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      margin: 0;
-    }
-    .container {
-      max-width: 600px;
-      background: white;
+      text-align: center;
       padding: 2rem;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
     h1 {
-      margin-bottom: 1rem;
-      font-size: 1.75rem;
-      color: #333;
+      margin-bottom: 2rem;
     }
-    .link-list {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-      margin-top: 1rem;
+    .section {
+      margin-top: 3rem;
     }
-    a {
-      text-decoration: none;
-      color: #007bff;
-      padding: 0.5rem;
-      border: 1px solid #007bff;
-      border-radius: 4px;
-      transition: all 0.2s ease-in-out;
+    .link-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+      max-width: 600px;
+      margin: 2rem auto 0 auto;
     }
-    a:hover {
+    a button {
+      padding: 1rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 5px;
       background-color: #007bff;
       color: white;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+    a button:hover {
+      background-color: #0056b3;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Airline Management System</h1>
-    <div class="link-list">
-      <a href="{{ url_for('add_airplane') }}">Add Airplane</a>
-      <a href="{{ url_for('add_person') }}">Add Person</a>
-      <a href="{{ url_for('assign_pilot') }}">Assign Pilot</a>
-      <a href="{{ url_for('flight_landing') }}">Flight Landing</a>
-      <a href="{{ url_for('flight_takeoff') }}">Flight Takeoff</a>
-      <a href="{{ url_for('grant_revoke_pilot') }}">Grant or Revoke Pilot License</a>
-      <a href="{{ url_for('offer_flight') }}">Offer Flight</a>
-      <a href="{{ url_for('passengers_board') }}">Passengers Board</a>
-      <a href="{{ url_for('passengers_disembark') }}">Passengers Disembark</a>
-      <a href="{{ url_for('recycle_crew') }}">Recycle Crew</a>
-      <a href="{{ url_for('retire_flight') }}">Retire Flight</a>
-      <a href="{{ url_for('simulation_cycle') }}">Simulation Cycle</a>
+
+  <h1>Airline Management System</h1>
+
+  <!-- Section: Procedures -->
+  <div class="section">
+    <h2>Procedures</h2>
+    <div class="link-grid">
+      <a href="{{ url_for('render_static_page', page_name='add_airplane') }}"><button>Add Airplane</button></a>
+      <a href="{{ url_for('render_static_page', page_name='add_person') }}"><button>Add Person</button></a>
+      <a href="{{ url_for('render_static_page', page_name='assign_pilot') }}"><button>Assign Pilot</button></a>
+      <a href="{{ url_for('render_static_page', page_name='flight_landing') }}"><button>Flight Landing</button></a>
+      <a href="{{ url_for('render_static_page', page_name='flight_takeoff') }}"><button>Flight Takeoff</button></a>
+      <a href="{{ url_for('render_static_page', page_name='grant_or_revoke_pilot_license') }}"><button>Grant/Revoke Pilot License</button></a>
+      <a href="{{ url_for('render_static_page', page_name='offer_flight') }}"><button>Offer Flight</button></a>
+      <a href="{{ url_for('render_static_page', page_name='passengers_board') }}"><button>Passengers Board</button></a>
+      <a href="{{ url_for('render_static_page', page_name='passengers_disembark') }}"><button>Passengers Disembark</button></a>
+      <a href="{{ url_for('render_static_page', page_name='recycle_crew') }}"><button>Recycle Crew</button></a>
+      <a href="{{ url_for('render_static_page', page_name='retire_flight') }}"><button>Retire Flight</button></a>
+      <a href="{{ url_for('render_static_page', page_name='simulation_cycle') }}"><button>Simulation Cycle</button></a>
     </div>
   </div>
+
+  <!-- Section: Views -->
+  <div class="section">
+    <h2>Views</h2>
+    <div class="link-grid">
+      <a href="{{ url_for('render_static_page', page_name='alternative_airports') }}"><button>Alternative Airports</button></a>
+      <a href="{{ url_for('render_static_page', page_name='flights_in_air') }}"><button>Flights In Air</button></a>
+      <a href="{{ url_for('render_static_page', page_name='flights_on_ground') }}"><button>Flights On Ground</button></a>
+      <a href="{{ url_for('render_static_page', page_name='people_in_air') }}"><button>People In Air</button></a>
+      <a href="{{ url_for('render_static_page', page_name='people_on_ground') }}"><button>People On Ground</button></a>
+      <a href="{{ url_for('render_static_page', page_name='route_summary') }}"><button>Route Summary</button></a>
+    </div>
+  </div>
+
 </body>
 </html>
-
