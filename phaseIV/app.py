@@ -50,7 +50,7 @@ def submit_add_airplane():
             tailNum, locationId, model, seatCap, planeType
         ])
 
-        return redirect(url_for('../index.html'))
+        return redirect(url_for('index'))
 
     except Exception as e:
         return render_template('procedures/add_airplane.html', error=str(e))
@@ -76,7 +76,7 @@ def submit_add_person():
         ])
 
         # Redirect to home page after successful submit
-        return redirect(url_for('../index.html'))
+        return redirect(url_for('index'))
 
     except Exception as e:
         # If an error happens, show the error on the form page
@@ -95,7 +95,7 @@ def submit_assign_pilot():
             personId, pilotType, certificationLevel, certificationExpiration
         ])
 
-        return redirect(url_for('../index.html'))
+        return redirect(url_for('index'))
     except Exception as e:
         return render_template('procedures/assign_pilot.html', error=str(e))
 
@@ -110,7 +110,7 @@ def submit_flight_landing():
             flightId, arrivingAirportId
         ])
 
-        return redirect(url_for('../index.html'))
+        return redirect(url_for('index'))
     except Exception as e:
         return render_template('procedures/flight_landing.html', error=str(e))
 
@@ -125,7 +125,7 @@ def submit_flight_takeoff():
             flightId, departingAirportId
         ])
 
-        return redirect(url_for('../index.html'))
+        return redirect(url_for('index'))
     except Exception as e:
         return render_template('procedures/flight_takeoff.html', error=str(e))
 
@@ -140,7 +140,7 @@ def submit_grant_revoke_pilot():
             personId, grantOrRevoke
         ])
 
-        return redirect(url_for('../index.html'))
+        return redirect(url_for('index'))
     except Exception as e:
         return render_template('procedures/grant_or_revoke_pilot_license.html', error=str(e))
 
@@ -164,7 +164,7 @@ def submit_offer_flight():
             flightDurationMinutes, flightStatus, seatPrice
         ])
 
-        return redirect(url_for('../index.html'))
+        return redirect(url_for('index'))
     except Exception as e:
         return render_template('procedures/offer_flight.html', error=str(e))
 
@@ -179,7 +179,7 @@ def submit_passengers_board():
             flightId, passengerId
         ])
 
-        return redirect(url_for('../index.html'))
+        return redirect(url_for('index'))
     except Exception as e:
         return render_template('procedures/passengers_board.html', error=str(e))
 
@@ -194,7 +194,7 @@ def submit_passengers_disembark():
             flightId, passengerId
         ])
 
-        return redirect(url_for('../index.html'))
+        return redirect(url_for('index'))
     except Exception as e:
         return render_template('procedures/passengers_disembark.html', error=str(e))
 
@@ -218,7 +218,7 @@ def submit_retire_flight():
 
         call_procedure('retire_flight', [flightId])
 
-        return redirect(url_for('../index.html'))
+        return redirect(url_for('index'))
     except Exception as e:
         return render_template('procedures/retire_flight.html', error=str(e))
 
@@ -227,7 +227,7 @@ def submit_retire_flight():
 def submit_simulation_cycle():
     try:
         call_procedure('simulation_cycle', [])
-        return redirect(url_for('../index.html'))
+        return redirect(url_for('index'))
     except Exception as e:
         return render_template('procedures/simulation_cycle.html', error=str(e))
 
