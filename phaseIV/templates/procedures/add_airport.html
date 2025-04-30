@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Procedure: Add Airport</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 600px;
+      margin: 2rem auto;
+      padding: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    form > div {
+      margin-bottom: 0.75rem;
+    }
+    label {
+      display: block;
+      margin-bottom: 0.25rem;
+      font-weight: bold;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 0.5rem;
+      box-sizing: border-box;
+    }
+    .buttons {
+      margin-top: 1.5rem;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      margin-right: 0.5rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button[type="reset"] {
+      background: #eee;
+    }
+    button[type="submit"] {
+      background: #007bff;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <h1>Procedure: Add Airport</h1>
+  <form id="addAirportForm" action="{{ url_for('submit_add_airport') }}" method="POST">
+    <div>
+      <label for="airportID">Airport ID</label>
+      <input type="text" id="airportID" name="airportID" placeholder="e.g., ATL" required>
+    </div>
+    <div>
+      <label for="airport_name">Airport Name</label>
+      <input type="text" id="airport_name" name="airport_name" placeholder="e.g., Hartsfield-Jackson" required>
+    </div>
+    <div>
+      <label for="city">City</label>
+      <input type="text" id="city" name="city" placeholder="e.g., Atlanta" required>
+    </div>
+    <div>
+      <label for="state">State</label>
+      <input type="text" id="state" name="state" placeholder="e.g., GA" required>
+    </div>
+    <div>
+      <label for="country">Country</label>
+      <input type="text" id="country" name="country" placeholder="e.g., USA" required>
+    </div>
+    <div>
+      <label for="locationID">Location ID</label>
+      <input type="text" id="locationID" name="locationID" placeholder="e.g., loc_120" required>
+    </div>
+    <div class="buttons">
+      <button type="button" onclick="window.location.href='{{ url_for('index') }}'">Cancel</button>
+      <button type="submit">Add</button>
+    </div>
+  </form>
+</body>
+</html>
