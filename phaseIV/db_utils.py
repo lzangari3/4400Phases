@@ -33,5 +33,8 @@ def call_procedure(proc_name, args):
     try:
         cursor.callproc(proc_name, args)
         conn.commit()
+    except Exception as e:
+        print(f"❌ Error calling procedure '{proc_name}': {e}")
+        raise
     finally:
         conn.close()

@@ -46,8 +46,15 @@ def submit_add_airplane():
         planeType = request.form['planeType']
 
         call_procedure('add_airplane', [
-            speed, maintained, airlineId, neo,
-            tailNum, locationId, model, seatCap, planeType
+            airlineId,
+            tailNum,
+            seatCap,
+            speed,
+            locationId,
+            planeType,
+            maintained,
+            model,
+            neo
         ])
 
         return redirect(url_for('index'))
