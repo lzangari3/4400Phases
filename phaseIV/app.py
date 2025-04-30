@@ -88,18 +88,18 @@ def submit_add_person():
     try:
         # Read form fields exactly as named
         locationId = request.form['locationId']
-        miles = request.form['miles']
+        miles = request.form['miles'] if 'miles' in request.form else None
         personId = request.form['personId']
         firstName = request.form['firstName']
         taxId = request.form['taxId']
         funds = request.form['funds']
-        lastName = request.form['lastName']
-        experience = request.form['experience']
+        lastName = request.form['lastName'] if 'lastName' in request.form else None
+        experience = request.form['experience'] if 'experience' != '' else None
 
         # Call your stored procedure
         call_procedure('add_person', [
-            locationId, miles, personId, firstName,
-            taxId, funds, lastName, experience
+            personId, firstName, lastName, locationId,
+            taxId, experience, miles, funds
         ])
 
         # Redirect to home page after successful submit
@@ -114,12 +114,10 @@ def submit_add_person():
 def submit_assign_pilot():
     try:
         personId = request.form['personId']
-        pilotType = request.form['pilotType']
-        certificationLevel = request.form['certificationLevel']
-        certificationExpiration = request.form['certificationExpiration']
-
+        flightId = request.form['flightId']
+    
         call_procedure('assign_pilot', [
-            personId, pilotType, certificationLevel, certificationExpiration
+            flightId, personId
         ])
 
         return redirect(url_for('index'))
@@ -131,10 +129,9 @@ def submit_assign_pilot():
 def submit_flight_landing():
     try:
         flightId = request.form['flightId']
-        arrivingAirportId = request.form['arrivingAirportId']
 
         call_procedure('flight_landing', [
-            flightId, arrivingAirportId
+            flightId
         ])
 
         return redirect(url_for('index'))
@@ -146,10 +143,9 @@ def submit_flight_landing():
 def submit_flight_takeoff():
     try:
         flightId = request.form['flightId']
-        departingAirportId = request.form['departingAirportId']
 
         call_procedure('flight_takeoff', [
-            flightId, departingAirportId
+            flightId
         ])
 
         return redirect(url_for('index'))
@@ -161,10 +157,10 @@ def submit_flight_takeoff():
 def submit_grant_revoke_pilot():
     try:
         personId = request.form['personId']
-        grantOrRevoke = request.form['grantOrRevoke']
+        license = request.form['license']
 
         call_procedure('grant_or_revoke_pilot_license', [
-            personId, grantOrRevoke
+            personId, license
         ])
 
         return redirect(url_for('index'))
@@ -175,20 +171,18 @@ def submit_grant_revoke_pilot():
 @app.route("/submit_offer_flight", methods=['POST'])
 def submit_offer_flight():
     try:
-        airlineId = request.form['airlineId']
-        flightNumber = request.form['flightNumber']
-        departureLocationId = request.form['departureLocationId']
-        arrivalLocationId = request.form['arrivalLocationId']
-        scheduledDepartureTime = request.form['scheduledDepartureTime']
-        scheduledArrivalTime = request.form['scheduledArrivalTime']
-        flightDurationMinutes = request.form['flightDurationMinutes']
-        flightStatus = request.form['flightStatus']
-        seatPrice = request.form['seatPrice']
+        
+        progress = request.form['progress']
+        cost = request.form['cost']
+        flightId = request.form['flightId']
+        routeId = request.form['routeId']
+        nextTime = request.form['nextTime']
+        airline = request.form['airline']
+        tail = request.form['tail']
 
         call_procedure('offer_flight', [
-            airlineId, flightNumber, departureLocationId, arrivalLocationId,
-            scheduledDepartureTime, scheduledArrivalTime,
-            flightDurationMinutes, flightStatus, seatPrice
+            flightId, routeId, airline,
+            tail, progress, nextTime, cost
         ])
 
         return redirect(url_for('index'))
@@ -200,10 +194,9 @@ def submit_offer_flight():
 def submit_passengers_board():
     try:
         flightId = request.form['flightId']
-        passengerId = request.form['passengerId']
 
         call_procedure('passengers_board', [
-            flightId, passengerId
+            flightId
         ])
 
         return redirect(url_for('index'))
@@ -215,10 +208,9 @@ def submit_passengers_board():
 def submit_passengers_disembark():
     try:
         flightId = request.form['flightId']
-        passengerId = request.form['passengerId']
 
         call_procedure('passengers_disembark', [
-            flightId, passengerId
+            flightId
         ])
 
         return redirect(url_for('index'))
