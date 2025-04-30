@@ -36,7 +36,8 @@ def render_static_page(page_name):
 def submit_add_airplane():
     try:
         speed = request.form['speed']
-        maintained = request.form['maintained'] or None
+        raw_date = request.form['maintained'].strip()
+        maintained = raw_date if raw_date else None
         airlineId = request.form['airlineId']
         neo = 1 if 'neo' in request.form else 0
         tailNum = request.form['tailNum']
@@ -74,7 +75,12 @@ def submit_add_airport():
         locationID = request.form['locationID']
 
         call_procedure('add_airport', [
-            airportID, airport_name, city, state, country, locationID
+            airportID,
+            airport_name,
+            city,
+            state,
+            country,
+            locationID
         ])
 
         return redirect(url_for('index'))
@@ -98,8 +104,14 @@ def submit_add_person():
 
         # Call your stored procedure
         call_procedure('add_person', [
-            locationId, miles, personId, firstName,
-            taxId, funds, lastName, experience
+            locationId,
+            miles,
+            personId,
+            firstName,
+            taxId,
+            funds,
+            lastName,
+            experience
         ])
 
         # Redirect to home page after successful submit
@@ -119,7 +131,10 @@ def submit_assign_pilot():
         certificationExpiration = request.form['certificationExpiration']
 
         call_procedure('assign_pilot', [
-            personId, pilotType, certificationLevel, certificationExpiration
+            personId,
+            pilotType,
+            certificationLevel,
+            certificationExpiration
         ])
 
         return redirect(url_for('index'))
@@ -134,7 +149,8 @@ def submit_flight_landing():
         arrivingAirportId = request.form['arrivingAirportId']
 
         call_procedure('flight_landing', [
-            flightId, arrivingAirportId
+            flightId,
+            arrivingAirportId
         ])
 
         return redirect(url_for('index'))
@@ -149,7 +165,8 @@ def submit_flight_takeoff():
         departingAirportId = request.form['departingAirportId']
 
         call_procedure('flight_takeoff', [
-            flightId, departingAirportId
+            flightId,
+            departingAirportId
         ])
 
         return redirect(url_for('index'))
@@ -164,7 +181,8 @@ def submit_grant_revoke_pilot():
         grantOrRevoke = request.form['grantOrRevoke']
 
         call_procedure('grant_or_revoke_pilot_license', [
-            personId, grantOrRevoke
+            personId,
+            grantOrRevoke
         ])
 
         return redirect(url_for('index'))
@@ -186,9 +204,15 @@ def submit_offer_flight():
         seatPrice = request.form['seatPrice']
 
         call_procedure('offer_flight', [
-            airlineId, flightNumber, departureLocationId, arrivalLocationId,
-            scheduledDepartureTime, scheduledArrivalTime,
-            flightDurationMinutes, flightStatus, seatPrice
+            airlineId,
+            flightNumber,
+            departureLocationId,
+            arrivalLocationId,
+            scheduledDepartureTime,
+            scheduledArrivalTime,
+            flightDurationMinutes,
+            flightStatus,
+            seatPrice
         ])
 
         return redirect(url_for('index'))
@@ -203,7 +227,8 @@ def submit_passengers_board():
         passengerId = request.form['passengerId']
 
         call_procedure('passengers_board', [
-            flightId, passengerId
+            flightId,
+            passengerId
         ])
 
         return redirect(url_for('index'))
@@ -218,7 +243,8 @@ def submit_passengers_disembark():
         passengerId = request.form['passengerId']
 
         call_procedure('passengers_disembark', [
-            flightId, passengerId
+            flightId,
+            passengerId
         ])
 
         return redirect(url_for('index'))
@@ -231,7 +257,9 @@ def submit_recycle_crew():
     try:
         flightId = request.form['flightId']
 
-        call_procedure('recycle_crew', [flightId])
+        call_procedure('recycle_crew', [
+            flightId
+        ])
 
         return redirect(url_for('index'))
     except Exception as e:
@@ -243,7 +271,9 @@ def submit_retire_flight():
     try:
         flightId = request.form['flightId']
 
-        call_procedure('retire_flight', [flightId])
+        call_procedure('retire_flight', [
+            flightId
+        ])
 
         return redirect(url_for('index'))
     except Exception as e:
@@ -253,7 +283,9 @@ def submit_retire_flight():
 @app.route("/submit_simulation_cycle", methods=['POST'])
 def submit_simulation_cycle():
     try:
-        call_procedure('simulation_cycle', [])
+        call_procedure('simulation_cycle', [
+            
+        ])
         return redirect(url_for('index'))
     except Exception as e:
         return render_template('procedures/simulation_cycle.html', error=str(e))
