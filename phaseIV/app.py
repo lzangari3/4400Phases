@@ -55,6 +55,26 @@ def submit_add_airplane():
     except Exception as e:
         return render_template('procedures/add_airplane.html', error=str(e))
 
+# Add Airport Procedure
+@app.route('/submit_add_airport', methods=['POST'])
+def submit_add_airport():
+    try:
+        airportID = request.form['airportID']
+        airport_name = request.form['airport_name']
+        city = request.form['city']
+        state = request.form['state']
+        country = request.form['country']
+        locationID = request.form['locationID']
+
+        call_procedure('add_airport', [
+            airportID, airport_name, city, state, country, locationID
+        ])
+
+        return redirect(url_for('index'))
+
+    except Exception as e:
+        return render_template('procedures/add_airport.html', error=str(e))
+
 # Add Person Procedure
 @app.route("/submit_add_person", methods=['POST'])
 def submit_add_person():
@@ -236,9 +256,6 @@ def submit_simulation_cycle():
 # The Views will be down here 
 # 
 ###
-
-# To-Do:
-# - Properly format the JSON files so that they can be 
 
 @app.route('/view/flights-in-air')
 def flights_in_air():
